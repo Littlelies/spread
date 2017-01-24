@@ -1,5 +1,5 @@
 ##Spread
-_Spread is a distributed application running on nodes (like servers, devices, browsers) that manages your data like a database with support for binaries and files to stop worrying about data in general. It is meant to be an alternative for services like firebase that don't provide on premises instances and tend to be not reliable and very expensive when used on server side_
+_Spread is a distributed application running on nodes (like servers, devices, browsers) that manages the synchronization of your data and generate events when a change happens._
 
 ####Data you need at a place is automatically stored locally
 Spread uses a [topic based publish–subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern), so you just tell Spread what you are locally interested in, giving:
@@ -10,8 +10,8 @@ This is highly desirable for micro services on server side, but also for offline
 
 ####Instantly syncronized and consistent
 Spread propagates any update in the system as soon as possible using [CmRDT](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type), giving:
-- **Instant access to up to date data**, even for big files, since propagation starts before the full file is uploaded
-- **Almost strong and eventual consistency**, since any update triggers a conflict free sync immediately and results in a propagation report. Disconnected nodes automatically synchronize at reconnection
+- **Instant access to up to date data**, even for big files, since propagation starts before the full file is uploaded, thanks to built in HTTP2 server
+- **Eventual consistency**, since any update triggers a conflict free sync immediately and results in a propagation report. Disconnected nodes automatically synchronize at reconnection
 
 This is highly desirable for micro services and distributed applications in general, but especially the ones serving mutable contents like CDN, video applications, telephony systems
 
@@ -29,3 +29,8 @@ Spread saves all updates, giving:
 - **Rollback and playback**, since you can go any time in the past
 
 This is highly desirable for snapshots, backups, disaster recovery, applying new service to a series of past events, etc.
+
+##Related work
+Spread is inspired from other great services:
+- data synchronization on devices like Firebase. Firebase is JSON only, doesn't provide on premises instances nor cache, meaning you depend on a third party service (and it tends to be expensive when used on server side since you pay $1 per downloaded GB).
+- file synchronization across servers like unison, glusterFS, rsync. Those tools are server side only, do not sync extra metadata and you need extra tools like inotify to generate events from changes
