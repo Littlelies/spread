@@ -43,7 +43,7 @@ get(Path, Pid) ->
 
 -spec post(list(), binary()) -> {spread_event:event(), [any()]} | {error, any()}.
 post(Path, Payload) ->
-    spread_core:set_event(Path, atom_to_binary(node()), erlang:system_time(microsecond), Payload, true, []).
+    spread_core:set_event(Path, atom_to_binary(node(), utf8), erlang:system_time(microsecond), Payload, true, []).
 
 %%====================================================================
 %% Internal functions
