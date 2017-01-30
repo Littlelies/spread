@@ -10,7 +10,7 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 -export([get/1, get/2]).
-
+-export([post/2]).
 %%====================================================================
 %% API
 %%====================================================================
@@ -40,6 +40,10 @@ get(Path, Pid) ->
             FirstChunk = spread_data:to_binary(Data, Pid),
             {Date, From, FirstChunk}
     end.
+
+-spec post(list(), binary()) -> {spread_event:event(), [any()]} | {error, any()}.
+post(Path, Payload) ->
+    spread_core:set_event(Path, atom_to_binary(node()), erlang:system_time(microsecond), Payload, true, []).
 
 %%====================================================================
 %% Internal functions
