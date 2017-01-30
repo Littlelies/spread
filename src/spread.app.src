@@ -1,0 +1,21 @@
+{application, spread,
+ [{description, "Spread data as you want"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {mod, { spread, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    lager,
+    gun,
+    cowboy,
+    autotree,
+    jwt
+   ]},
+  {env,[]},
+  {modules, []},
+
+  {maintainers, []},
+  {licenses, []},
+  {links, []}
+ ]}.

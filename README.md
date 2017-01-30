@@ -34,3 +34,13 @@ This is highly desirable for snapshots, backups, disaster recovery, applying new
 Spread is inspired from other great services:
 - data synchronization on devices like Firebase. Firebase is JSON only, doesn't provide on premises instances nor cache, meaning you depend on a third party service (and it tends to be expensive when used on server side since you pay $1 per downloaded GB).
 - file synchronization across servers like unison, glusterFS, rsync. Those tools are server side only, do not sync extra metadata and you need extra tools like inotify to generate events from changes
+
+##Getting started
+####In an Erlang project
+Set spread as one of your dependencies, launch your app, and start playing with `spread:set(Path, Binary)` and `spread:get(Path)`
+####Standalone
+Please refer to [`spread_release`](https://github.com/Littlelies/spread_release) project instead.
+
+##Configuration
+- When a request comes in, spread authorizes it using JWT. `jwt_key` and `jwt_iss` are needed to decode the JWT.
+- When an event happens, it is propagated in a push manner to targets. `targets` is needed to get the list of them, as atoms.
