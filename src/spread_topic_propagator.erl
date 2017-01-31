@@ -10,8 +10,12 @@ propagate(Event) ->
 
 propagate_outside(Event) ->
     %% Push to targets
-    {ok, Targets} = application:get_env(spread, targets),
-    [spread_gun:send_to(Target, Event) || Target <- Targets].
+    case application:get_env(spread, targets) of
+        undefined ->
+            [];
+        {ok, Targets} ->
+            [spread_gun:send_to(Target, Event) || Target <- Targets]
+    end.
 
 propagate_locally(Event) ->
     [spread_topic_cache:maybe_add(Event)].
