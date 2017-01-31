@@ -26,8 +26,12 @@ stop(_State) ->
 
 -spec get(list()) -> error | {integer(), binary(), binary()}.
 get(Path) ->
-    {Date, From, FirstChunk} = get(Path, self()),
-    {Date, From, loop_to_get(FirstChunk)}.
+    case get(Path, self()) of
+        {Date, From, FirstChunk} ->
+            {Date, From, loop_to_get(FirstChunk)};
+        error ->
+            error
+    end.
 
 -spec get(list(), pid()) -> error | {integer(), binary(), binary()}.
 get(Path, Pid) ->
