@@ -18,7 +18,7 @@
 -record(stream, {ref, ownerpid}).
 
 start_link(Target) ->
-    gen_server:start_link(?MODULE, [Target], []).
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Target], []).
 
 init([Target]) ->
     %% Subscribe to the list of servers to be linked to
