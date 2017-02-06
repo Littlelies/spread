@@ -11,7 +11,7 @@ set_event(TopicName, From, Date, DataAsBinary, IsDataFinal, SpecificPropagateRul
     %% Create the event as stand alone object, store it so it will be handled again if a problem occurs
     {_NewOrExisting, Event} = spread_event:new(TopicName, From, Date, DataAsBinary, IsDataFinal, SpecificPropagateRules),
     %% Propagate that event to local and other servers
-    Out = spread_topic_propagator:propagate(Event),
+    Out = propagate(Event),
     %% Add propagate info to Event object since we're done
     spread_event:set_propagate_info(Event, Out),
     {Event, Out}.
@@ -19,3 +19,6 @@ set_event(TopicName, From, Date, DataAsBinary, IsDataFinal, SpecificPropagateRul
 add_data_to_event(Event, Data, IsDataFinal) ->
     CurrentData = spread_event:data(Event),
     spread_data:update_with_more_data(CurrentData, Data, IsDataFinal).
+
+propagate(Event) ->
+    [spread_topic_cache:maybe_add(Event)].

@@ -29,6 +29,8 @@ id(Topic) ->
 name(Topic) ->
     Topic#topic.name.
 
--spec name_as_binary(topic()) -> binary().
-name_as_binary(Topic) ->
-    spread_utils:binary_join(Topic#topic.name, <<"/">>).
+-spec name_as_binary(topic() | topic_name()) -> binary().
+name_as_binary(Topic) when is_record(Topic, topic) ->
+    spread_utils:binary_join(Topic#topic.name, <<"/">>);
+name_as_binary(TopicName) ->
+    spread_utils:binary_join(TopicName, <<"/">>).

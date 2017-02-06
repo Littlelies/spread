@@ -6,7 +6,8 @@
 -export([
     init/2,
     info/3,
-    terminate/3
+    terminate/3,
+    parse_updates/1
 ]).
 
 %%====================================================================
@@ -43,6 +44,10 @@ info({update, PathAsList, Timestamp, Event} = Message, Req, State) ->
 terminate(_Reason, _Req, _State) ->
     ok.
 
+parse_updates(Binary) ->
+    Updates = binary:split(Binary, <<"\n\n">>, [global]),
+    parse_updates(Updates, []).
+
 %%====================================================================
 %% Internal functions
 %%====================================================================
@@ -53,3 +58,10 @@ format_updates([A | Others]) ->
 
 format_update({PathAsList, Timestamp, Event}) ->
     <<"id: ", (integer_to_binary(Timestamp))/binary, "\ndata: ", (spread_utils:binary_join(PathAsList, <<"/">>))/binary , "\ndata: ", (spread_data:raw(spread_event:data(Event)))/binary, "\n\n">>.
+
+parse_updates([PartialUpdate], Acc) ->
+    {PartialUpdate, lists:reverse(Acc)};
+parse_updates([Update | Updates]) ->
+    [<<"id: ", TimestampB/binary>>, A] = binary:split(Update, <<"\n">>),
+    [<<"data: ", PathB/binary>>, <<"data: ", Data/binary>>] = binary:split(A, <<"\n">>),
+    parse_updates(Updates, [{PathB, binary_to_integer(TimestampB), Data} | Acc]).
