@@ -49,19 +49,19 @@ get(Path, Pid) ->
             {Date, From, FirstChunk}
     end.
 
--spec post(spread_topic:topic_name(), binary()) -> {spread_event:event(), [any()]} | {error, any()}.
+-spec post(spread_topic:topic_name(), binary()) -> {existing | new, spread_event:event(), [any()]} | {error, any()}.
 post(Path, Payload) ->
     spread_core:set_event(Path, atom_to_binary(node(), utf8), erlang:system_time(microsecond), Payload, true, []).
 
 
--spec ensure_remote(atom()) -> {spread_event:event(), [any()]} | {error, any()}.
+-spec ensure_remote(atom()) -> {existing | new, spread_event:event(), [any()]} | {error, any()}.
 ensure_remote(NodeName) ->
     spread_gun:add_connection(NodeName).
 
 
 -spec subscribe_locally(spread_topic:topic_name(), pid()) -> [{spread_topic:topic_name(), integer(), spread_event:event()}].
 subscribe_locally(Path, Pid) ->
-    autotree_app:subscribe(Path, 0, Pid).
+    spread_autotree:subscribe(Path, 0, Pid).
 
 -spec subscribe(spread_topic:topic_name(), pid()) -> [{spread_topic:topic_name(), integer(), spread_event:event()}].
 subscribe(Path, Pid) ->

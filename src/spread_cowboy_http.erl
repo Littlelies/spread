@@ -82,19 +82,31 @@ process_post(Req0, State, Path, From) ->
     Date = get_date(Req0),
     Prs = get_prs(Req0),
     lager:info("~p POST From ~p, Date ~p: ~p", [self(), From, Date, Path]),
-    case cowboy_req:read_body(Req0, #{length => 64}) of
+    Answer = case cowboy_req:read_body(Req0, #{length => 64}) of
         {ok, Data, Req} ->
             lager:info("Got unique chunk, creating event"),
-            {Event, Out} = spread_core:set_event(Path, From, Date, Data, true, Prs);
+            {_IsNew, Event, Out} = spread_core:set_event(Path, From, Date, Data, true, Prs),
+            true;
         {more, Data, Req} ->
             lager:info("Got first chunk, creating event ~p", [size(Data)]),
-            {Event, Out} = spread_core:set_event(Path, From, Date, Data, false, Prs),
-            read_body(Req, Event)
+            {IsNew, Event, Out} = spread_core:set_event(Path, From, Date, Data, false, Prs),
+            case IsNew of
+                new ->
+                    read_body(Req, Event),
+                    true;
+                existing ->
+                    false
+            end
     end,
     lager:info("Upload done"),
-    {ok, cowboy_req:reply(200, #{
-        <<"content-type">> => <<"text/plain; charset=utf-8">>
-    }, format_out(Event, Out), Req), State}.
+    case Answer of
+        true ->
+            {ok, cowboy_req:reply(200, #{
+                <<"content-type">> => <<"text/plain; charset=utf-8">>
+            }, format_out(Event, Out), Req), State};
+        false ->
+            cowboy_req:reply(409, Req)
+    end.
 
 read_body(Req0, Event) ->
     case cowboy_req:read_body(Req0, #{length => 256000}) of

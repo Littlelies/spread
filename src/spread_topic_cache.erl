@@ -29,13 +29,11 @@
 
 -spec maybe_add(spread_event:event()) -> list() | too_late | {error, any()}.
 maybe_add(Event) ->
-    PathAsList = spread_topic:name(spread_event:topic(Event)),
-    Timestamp = spread_event:date(Event),
-    autotree_app:update(PathAsList, Timestamp, Event).
+    spread_autotree:update(Event).
 
 -spec get_latest(spread_topic:topic_name()) -> {integer(), spread_event:event()} | error.
 get_latest(TopicName) ->
-    autotree_app:get_timestamp_and_opaque(TopicName).
+    spread_autotree:get_timestamp_and_opaque(TopicName).
 
 %%====================================================================
 %% gen_server callbacks

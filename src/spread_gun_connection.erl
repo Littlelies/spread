@@ -20,14 +20,17 @@
     streams = [],
     state = down,
     subs = [],
+    subs_streams = [],
     partial = <<>>
 }).
-% -record(stream, {
-%     ref,
-%     ownerpid
-% }).
+-record(stream, {
+     gun_stream,
+     event
+}).
+-type state() :: #state{}.
+
 start_link(Target) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [Target], []).
+    gen_server:start_link({local, Target}, ?MODULE, [Target], []).
 
 init([Target]) ->
     {ok, ConnPid} = gun:open(atom_to_list(Target), 443),
@@ -54,6 +57,8 @@ handle_call({subscribe, Sub}, _From, State) ->
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
+handle_cast({load_binary_event, Event}, State) ->
+    {noreply, add_binary_stream(Event, State)};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -65,20 +70,20 @@ handle_info({gun_up, _ConnPid, http2}, State) ->
 handle_info({gun_down, _ConnPid, _Protocol, _Reason, _Processed, _NotProcessed}, State) ->
     lager:info("[~p] Connection is down", [State#state.target]),
     {noreply, State#state{state = down}};
-handle_info({gun_response, _ConnPid, StreamRef, fin, _Status, Headers}, State) ->
+handle_info({gun_response, _ConnPid, StreamRef, true, _Status, Headers}, State) ->
     lager:debug("[~p] No data for ~p, headers are ~p", [State#state.target, StreamRef, Headers]),
     {noreply, remove_stream(StreamRef, State)};
-handle_info({gun_response, _ConnPid, StreamRef, nofin, _Status, Headers}, State) ->
+handle_info({gun_response, _ConnPid, StreamRef, false, _Status, Headers}, State) ->
     lager:debug("[~p] Got headers for ~p: ~p", [State#state.target, StreamRef, Headers]),
-    NewState = manage_data(Data, StreamRef, State),    
-    {noreply, NewState};
+    %NewState = manage_data(Headers, StreamRef, false, State),    
+    {noreply, State};
 handle_info({gun_data, _ConnPid, StreamRef, nofin, Data}, State) ->
     lager:debug("[~p] Got partial data for ~p: ~p", [State#state.target, StreamRef, Data]),
-    NewState = manage_data(Data, StreamRef, State),
+    NewState = manage_data(Data, StreamRef, false, State),
     {noreply, NewState};
 handle_info({gun_data, _ConnPid, StreamRef, fin, Data}, State) ->
     lager:debug("[~p] Got final data for ~p: ~p", [State#state.target, StreamRef, Data]),
-    NewState = manage_data(Data, StreamRef, State),
+    NewState = manage_data(Data, StreamRef, true, State),
     {noreply, remove_stream(StreamRef, NewState)};
 % handle_info({{data_for_stream, StreamRef}, {Prefix, Binary}}, State) ->
 %     gun:data(State#state.connpid, StreamRef, Prefix, Binary),
@@ -124,26 +129,41 @@ add_subscriptions([Sub | Subs], State) ->
         [
             {<<"last-event-id">>, integer_to_list(spread_sub:timestamp(Sub))}
         ]),
-    add_subscriptions(Subs, add_stream(Stream, State)).
+    add_subscriptions(Subs, add_subs_stream(Stream, State)).
 
-add_stream(Stream, State) ->
-    State#state{streams = [Stream | State#state.streams]}.
+add_binary_stream(Event, State) ->
+    Stream = gun:get(State#state.connpid,
+        spread_topic:name_as_binary(spread_event:topic(Event))),
+    add_stream(Stream, Event, State).
+
+add_stream(Stream, Event, State) ->
+    State#state{streams = [#stream{gun_stream = Stream, event = Event} | State#state.streams]}.
+
+add_subs_stream(Stream, State) ->
+    State#state{subs_streams = [Stream | State#state.subs_streams]}.
+
 
 remove_stream(StreamRef, State) ->
     Streams = State#state.streams,
     NewStreams = lists:keydelete(StreamRef, 2, Streams),
-    State#state{streams = NewStreams}.
 
-manage_data(Data, _StreamRef, State) ->
-    {Partial, Updates} = spread_cowboy_sse:parse_updates(<<(State#state.parial)/binary, Data/binary>>),
-    %% Manage updates internally
-    publish_internally_updates(Updates),
-    %% Loop with partial
-    State#state{partial = Partial}.
+    SubStreams = State#state.subs_streams,
+    NewSubStreams = lists:keydelete(StreamRef, 2, SubStreams),
 
-publish_internally_updates([]) ->
-    ok;
-publish_internally_updates([{Path, Date, Data} | Updates]) ->
-    spread_core:set_event(Path, From, Date, Data, true, Prs),
-    publish_internally_updates(Updates).
+    State#state{streams = NewStreams, subs_streams = NewSubStreams}.
 
+-spec manage_data(binary(), any(), boolean(), state()) -> state().
+manage_data(Data, StreamRef, IsFin, State) ->
+    case lists:keyfind(StreamRef, 2, State#state.streams) of
+        false ->
+            {Partial, _Updates} = spread_autotree:parse_updates_and_broadcast(
+                <<(State#state.partial)/binary, Data/binary>>,
+                fun(Event) ->
+                    gen_server:cast(self, {load_binary_event, Event})
+                end),
+            %% Loop with partial
+            State#state{partial = Partial};
+        Stream ->
+            %% Send this data
+            spread_core:add_data_to_event(Stream#stream.event, Data, IsFin)
+    end.

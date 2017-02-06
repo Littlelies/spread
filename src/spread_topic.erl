@@ -4,7 +4,8 @@
     new/1,
     id/1,
     name/1,
-    name_as_binary/1
+    name_as_binary/1,
+    binary_to_name/1
     ]).
 -type topic_name() :: [binary()].
 
@@ -34,3 +35,6 @@ name_as_binary(Topic) when is_record(Topic, topic) ->
     spread_utils:binary_join(Topic#topic.name, <<"/">>);
 name_as_binary(TopicName) ->
     spread_utils:binary_join(TopicName, <<"/">>).
+
+binary_to_name(Binary) ->
+    binary:split(Binary, <<"/">>, [global]).
