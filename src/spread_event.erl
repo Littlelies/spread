@@ -73,30 +73,14 @@ new(TopicName, From, Date, DataAsBinary, IsDataFinal, SpecificPropagateRules, Is
         true ->
             case get_event(Id) of
                 {error, _} ->
-                    Data = spread_data:new(Id, DataAsBinary, IsDataFinal),
-                    Event = #event{
-                        id = Id,
-                        from = From,
-                        date = Date,
-                        topic = Topic,
-                        data = Data,
-                        propagate_rules = SpecificPropagateRules
-                    },
+                    Event = make_new_event(Id, From, Date, Topic, DataAsBinary, IsDataFinal, SpecificPropagateRules),
                     store_event(Event),
                     {new, Event};
                 Event ->
                     {existing, Event}
             end;
         _ ->
-            Data = spread_data:new(Id, DataAsBinary, IsDataFinal),
-            Event = #event{
-                id = Id,
-                from = From,
-                date = Date,
-                topic = Topic,
-                data = Data,
-                propagate_rules = SpecificPropagateRules
-            },
+            Event = make_new_event(Id, From, Date, Topic, DataAsBinary, IsDataFinal, SpecificPropagateRules),
             {new, Event}
     end.
 
@@ -136,3 +120,14 @@ store_event(Event) when is_record(Event, event) ->
 -spec event_filename(event_id()) -> list().
 event_filename(EventId) ->
     ?ROOT_EVENT_DIR ++ binary_to_list(EventId).
+
+make_new_event(Id, From, Date, Topic, DataAsBinary, IsDataFinal, SpecificPropagateRules) ->
+    Data = spread_data:new(Id, DataAsBinary, IsDataFinal),
+    #event{
+        id = Id,
+        from = From,
+        date = Date,
+        topic = Topic,
+        data = Data,
+        propagate_rules = SpecificPropagateRules
+    }.

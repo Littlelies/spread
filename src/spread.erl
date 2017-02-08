@@ -15,6 +15,10 @@
 -export([subscribe_locally/2]).
 -export([ensure_remote/1]).
 
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
+
 %%====================================================================
 %% API
 %%====================================================================
@@ -58,7 +62,6 @@ post(Path, Payload) ->
 ensure_remote(NodeName) ->
     spread_gun:add_connection(NodeName).
 
-
 -spec subscribe_locally(spread_topic:topic_name(), pid()) -> [{spread_topic:topic_name(), integer(), spread_event:event()}].
 subscribe_locally(Path, Pid) ->
     spread_autotree:subscribe(Path, 0, Pid).
@@ -81,3 +84,71 @@ loop_to_get(Acc) ->
         {fin, DataBinary} ->
             <<Acc/binary, DataBinary/binary>>
     end.
+
+-ifdef(TEST).
+spread_test() ->
+    os:cmd("rm -rf storage"),
+    application:start(syntax_tools),
+    application:start(compiler),
+    application:start(goldrush),
+    application:start(lager),
+    application:start(cowlib),
+    application:start(ranch),
+    application:start(gun),
+    application:start(cowboy),
+    application:start(autotree),
+    application:start(jsx),
+    application:start(base64url),
+    application:start(jwt),
+    application:start(spread),
+    spread:ensure_remote('localhost:8080'),
+
+    lager:info("TEST: We can subscribe to a path where there is nothing yet"),
+    spread:subscribe([<<"test">>], self()),
+
+    lager:info("TEST: We can post new data and get the amount of warned subscribers for each sub path"),
+    SmallPayload =  <<"test small payload">>,
+    SmallTopic = [<<"test">>, <<"test1">>],
+    {new, _Event, List} = spread:post(SmallTopic, SmallPayload),
+    ?assertEqual(List, [[{[],0}, {[<<"test">>], 1}, {[<<"test">>, <<"test1">>], 0}]]),
+    assert_update_received(SmallTopic),
+
+    lager:info("TEST: We can get stored data with info"),
+    {_Time, From, Pay} = spread:get(SmallTopic),
+    ?assertEqual(
+        From,
+        atom_to_binary(node(), utf8)
+    ),
+    ?assertEqual(
+        Pay,
+        SmallPayload
+    ),
+
+    lager:info("TEST: We can post new small data via HTTP"),
+    os:cmd("cd apps/spread/tests && ./post_small_http.sh"),
+    assert_update_received([<<"test">>]),
+
+    lager:info("TEST: We can post new big data via HTTP"),
+    os:cmd("cd apps/spread/tests && ./post_big_http.sh"),
+    assert_update_received([<<"test">>, <<"image">>]).
+
+assert_update_received(Topic) ->
+    receive
+        {update, ReceivedTopic, _Timestamp, _Event} ->
+            ?assertEqual(
+                ReceivedTopic,
+                Topic
+            );
+        Any ->
+            ?assertEqual(
+                Any,
+                right_update_message
+            )
+    after 0 ->
+        ?assertEqual(
+            no_message_received,
+            message_received
+        )
+    end.
+    
+-endif.

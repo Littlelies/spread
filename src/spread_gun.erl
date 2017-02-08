@@ -69,4 +69,4 @@ init([]) ->
     RemoteSubsManager = {spread_gun_subscription_manager, {spread_gun_subscription_manager, start_link, []}, permanent, 5000, worker, [spread_gun_subscription_manager]},
 %    PermanentTargets = spread:subscribe_locally([<<"peers">>], Pid),
 %    Children = [{Target, {spread_gun_connection, start_link, [Target]}, permanent, 5000, worker, [spread_gun_connection]} || Target <- PermanentTargets],
-    {ok, { {one_for_one, 5, 1}, [RemotePeersManager, RemoteSubsManager]} }.
+    {ok, { {one_for_one, 5, 1}, [RemoteSubsManager, RemotePeersManager]} }.

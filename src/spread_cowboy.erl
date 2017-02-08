@@ -14,7 +14,6 @@
 %%====================================================================
 
 start() ->
-    lager:info("Starting cowboy"),
     Dispatch = cowboy_router:compile([
         {'_', [
             {"/sse/[...]", spread_cowboy_sse, []},

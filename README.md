@@ -1,5 +1,5 @@
 ##Spread
-_Spread is a distributed application running on nodes (like servers, devices, browsers) that manages the synchronization of your data and generate events when a change happens._
+_Spread is a distributed cache application running on nodes (like servers, devices, browsers) that manages the synchronization of your data and generate events when a change happens._
 
 ####Data you need at a place is automatically stored locally
 Spread uses a [topic based publish–subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern), so you just tell Spread what you are locally interested in, giving:
@@ -40,7 +40,8 @@ Spread is inspired from other great services:
 Set spread as one of your dependencies, launch your app, and start playing with `spread:set(Path, Binary)` and `spread:get(Path)`
 ####Standalone
 Please refer to [`spread_release`](https://github.com/Littlelies/spread_release) project instead.
+####Development
+Create an empty rebar3 release, replace the apps/spread directory with the git repo, copy the deps in rebar.config, enjoy
 
 ##Configuration
-- When a request comes in, spread authorizes it using JWT. `jwt_key` and `jwt_iss` are needed to decode the JWT.
-- When an event happens, it is propagated in a push manner to targets. `targets` is needed to get the list of them, as atoms.
+- When a request comes in, spread can authenticate and authorizes it using JWT. `jwt_key` and `jwt_iss` are needed to decode the JWT. If not present, all requests are accepted.

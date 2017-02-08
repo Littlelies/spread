@@ -25,14 +25,13 @@ terminate(_Reason, _Req, _State) ->
 %%====================================================================
 
 maybe_process(Req, State, <<"POST">>, Path, true) ->
-    From = <<"testFRed">>,
-    %case spread_cowboy:get_auth(Req) of
-    %    error ->
-    %        {ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot POST.">>, Req), State};
-    %    From ->
+    case spread_cowboy:get_auth(Req) of
+        error ->
+            process_post(Req, State, Path, <<"anonymous">>);
+            %{ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot POST.">>, Req), State};
+        From ->
             process_post(Req, State, Path, From)
-    %end
-    ;
+    end;
 maybe_process(Req, State, <<"POST">>, _, false) ->
     {ok, cowboy_req:reply(400, #{}, <<"Missing body.">>, Req), State};
 maybe_process(Req, State, <<"GET">>, Path, _) ->

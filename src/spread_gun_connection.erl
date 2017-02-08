@@ -18,7 +18,7 @@
     target,
     connpid,
     streams = [],
-    state = down,
+    state = init,
     subs = [],
     subs_streams = [],
     partial = <<>>
@@ -30,50 +30,45 @@
 -type state() :: #state{}.
 
 start_link(Target) ->
-    gen_server:start_link({local, Target}, ?MODULE, [Target], []).
+    gen_server:start(?MODULE, [Target], []).
 
 init([Target]) ->
-    {ok, ConnPid} = gun:open(atom_to_list(Target), 443),
-    Subs = spread_gun_subscription_manager:get_subs(),
-    {ok, #state{connpid = ConnPid, target = Target, subs = Subs}}.
+    self() ! {init, Target},
+    {ok, #state{target = Target}}.
 
-
-handle_call({subscribe, Sub}, _From, State) ->
-    {reply, ok, add_subscriptions([Sub], State)};
-% handle_call({send, Event, OwnerPid}, _From, State) ->
-%     StreamRef = gun:post(State#state.connpid, spread_topic:name_as_binary(spread_event:topic(Event)),
-%         [
-%             {<<"From">>, spread_event:from(Event)},
-%             {<<"Etag">>, <<"\"", (integer_to_binary(spread_event:date(Event)))/binary, "\"">>},
-%             {<<"Content-Type">>, <<"application/octet-stream">>}
-%         ]),
-%     case spread_data:to_binary(spread_event:data(Event), {self(), {data_for_stream, StreamRef}}) of
-%         <<>> ->
-%             lager:info("Empty binary, not sending");
-%         Binary ->
-%             gun:data(State#state.connpid, StreamRef, nofin, Binary)
-%     end,
-%     {reply, ok, add_stream(#stream{ref = StreamRef, ownerpid = OwnerPid}, State)};
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
+handle_cast({subscribe, Sub}, State) when State#state.state =/= init ->
+    {noreply, add_subscriptions([Sub], State)};
 handle_cast({load_binary_event, Event}, State) ->
     {noreply, add_binary_stream(Event, State)};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({gun_up, _ConnPid, http2}, State) ->
-    lager:info("[~p] Connection is up", [State#state.target]),
+handle_info({init, Target}, State) ->
+    {Host, Port} = get_host_and_port(Target),
+    case gun:open(Host, Port, #{protocols => [http2]}) of
+        {ok, ConnPid} ->
+            Subs = spread_gun_subscription_manager:get_subs(),
+            {noreply, State#state{connpid = ConnPid, subs = Subs, state = down}};
+        {error, Reason} ->
+            lager:error("FAILED TO CONNECT TO ~p, RETRYING", [Reason]),
+            timer:send_after(2000, {init, Target}),
+            {noreply, State}
+    end;
+handle_info({gun_up, _ConnPid, HTTPVersion}, State) ->
+    lager:info("[~p] Connection is up using ~p", [State#state.target, HTTPVersion]),
     %% Re open all streams
     NewState = add_subscriptions(State#state.subs, State),
     {noreply, NewState#state{state = up}};
 handle_info({gun_down, _ConnPid, _Protocol, _Reason, _Processed, _NotProcessed}, State) ->
     lager:info("[~p] Connection is down", [State#state.target]),
     {noreply, State#state{state = down}};
-handle_info({gun_response, _ConnPid, StreamRef, true, _Status, Headers}, State) ->
+handle_info({gun_response, _ConnPid, StreamRef, fin, _Status, Headers}, State) ->
     lager:debug("[~p] No data for ~p, headers are ~p", [State#state.target, StreamRef, Headers]),
     {noreply, remove_stream(StreamRef, State)};
-handle_info({gun_response, _ConnPid, StreamRef, false, _Status, Headers}, State) ->
+handle_info({gun_response, _ConnPid, StreamRef, nofin, _Status, Headers}, State) ->
     lager:debug("[~p] Got headers for ~p: ~p", [State#state.target, StreamRef, Headers]),
     %NewState = manage_data(Headers, StreamRef, false, State),    
     {noreply, State};
@@ -85,16 +80,6 @@ handle_info({gun_data, _ConnPid, StreamRef, fin, Data}, State) ->
     lager:debug("[~p] Got final data for ~p: ~p", [State#state.target, StreamRef, Data]),
     NewState = manage_data(Data, StreamRef, true, State),
     {noreply, remove_stream(StreamRef, NewState)};
-% handle_info({{data_for_stream, StreamRef}, {Prefix, Binary}}, State) ->
-%     gun:data(State#state.connpid, StreamRef, Prefix, Binary),
-%     NewState = case Prefix of
-%         nofin ->
-%             State;
-%         fin ->
-%             lager:info("Upload to connection is done"),
-%             remove_stream(StreamRef, State)
-%     end,
-%     {noreply, NewState};
 handle_info({'DOWN', _MRef, process, _ConnPid, Reason}, State) ->
     lager:error("[~p] Gun connection is dead because of a gun bug: ~p", [State#state.target, Reason]),
     {stop, Reason, ok, State};
@@ -109,11 +94,12 @@ handle_info({gun_error, _MRef, StreamRef, Any}, State) ->
     lager:info("Stream ~p says: ~p", [StreamRef, Any]),
     {noreply, State};
 handle_info(_Info, State) ->
-    lager:info("Unknown info ~p", [_Info]),
+    lager:info("[spread_gun_connection] Unknown info ~p", [_Info]),
     {noreply, State}.
 
-terminate(_Reason, State) ->
-    gun:shutdown(State#state.connpid),
+terminate(_Reason, State) when State#state.state =/= init ->
+    gun:shutdown(State#state.connpid);
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -122,8 +108,11 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
+add_subscriptions([], State) ->
+    State;
 add_subscriptions([Sub | Subs], State) ->
+    lager:info("Adding subscription ~p", [State]),
+    % @todo: what happens when we do that and connection is down???
     Stream = gun:get(State#state.connpid,
         <<"/sse/", (spread_topic:name_as_binary(spread_sub:path(Sub)))/binary>>,
         [
@@ -154,6 +143,7 @@ remove_stream(StreamRef, State) ->
 
 -spec manage_data(binary(), any(), boolean(), state()) -> state().
 manage_data(Data, StreamRef, IsFin, State) ->
+    lager:info("Manage ~p in ~p", [StreamRef, State#state.streams]),
     case lists:keyfind(StreamRef, 2, State#state.streams) of
         false ->
             {Partial, _Updates} = spread_autotree:parse_updates_and_broadcast(
@@ -167,3 +157,13 @@ manage_data(Data, StreamRef, IsFin, State) ->
             %% Send this data
             spread_core:add_data_to_event(Stream#stream.event, Data, IsFin)
     end.
+
+get_host_and_port(Target) ->
+    Url = atom_to_list(Target),
+    case re:split(Url, ":", [{return, list}]) of
+        [Host, PortAsList] ->
+            Port = list_to_integer(PortAsList);
+        [Host] ->
+            Port = 8080
+    end,
+    {Host, Port}.

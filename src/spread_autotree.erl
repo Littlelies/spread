@@ -14,6 +14,7 @@ subscribe(Path, Timestamp, Pid) ->
 update(Event) ->
     PathAsList = spread_topic:name(spread_event:topic(Event)),
     Timestamp = spread_event:date(Event),
+    lager:info("Update ~p", [PathAsList]),
     autotree_app:update(PathAsList, Timestamp, Event).
 
 get_timestamp_and_opaque(TopicName) ->
@@ -40,7 +41,7 @@ format_update({PathAsList, Timestamp, Event}) ->
         "\ndata: ", (spread_event:from(Event))/binary ,
         "\ndata: ", (spread_data:raw(spread_event:data(Event)))/binary, "\n\n">>.
 
-parse_updates_and_broadcast([PartialUpdate], Callback, Acc) ->
+parse_updates_and_broadcast([PartialUpdate], _Callback, Acc) ->
     {PartialUpdate, lists:reverse(Acc)};
 parse_updates_and_broadcast([Update | Updates], Callback, Acc) ->
     [<<"id: ", TimestampB/binary>>, A] = binary:split(Update, <<"\n">>),

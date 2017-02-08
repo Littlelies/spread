@@ -37,12 +37,13 @@ init([]) ->
     {ok, #state{}}.
 
 handle_call({add_subscription, Sub}, _From, State) ->
-    Children = supervisor:which_children(?MODULE),
-    add_subscription_to_each_child(Children, Sub),
+    Pids = spread_gun_peers_manager:get_connections_pids(),
+    add_subscription_to_each_connection(Pids, Sub),
     {reply, ok, State#state{subs = [Sub | State#state.subs]}};
 handle_call({get_subs}, _From, State) ->
     {reply, State#state.subs, State};
 handle_call(_Request, _From, State) ->
+    lager:info("Unknown call ~p", [_Request]),
     {reply, ignored, State}.
 
 handle_cast(_Msg, State) ->
@@ -60,11 +61,8 @@ code_change(_OldVsn, State, _Extra) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
-
-add_subscription_to_each_child([Child | Children], Sub) ->
-    case Child of
-        {_Id, restarting, _Type, _Modules} ->
-            add_subscription_to_each_child(Children, Sub);
-        {_Id, ChildPid, _Type, _Modules} ->
-            gen_server:call(ChildPid, {subscribe, Sub})
-    end.
+add_subscription_to_each_connection([], _Sub) ->
+    ok;
+add_subscription_to_each_connection([Pid | Pids], Sub) ->
+    catch gen_server:cast(Pid, {subscribe, Sub}),
+    add_subscription_to_each_connection(Pids, Sub).
