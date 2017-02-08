@@ -60,6 +60,7 @@ parse_updates_and_broadcast([Update | Updates], Callback, Acc) ->
         {new, true} ->
             Callback(Event);
         _ ->
+            lager:info("No new file, no need to download ~p", [{IsNew, IsFile}]),
             ok
     end,
     parse_updates_and_broadcast(Updates, Callback, [Event | Acc]).

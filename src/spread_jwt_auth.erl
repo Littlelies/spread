@@ -2,21 +2,59 @@
 
 -export([auth/1]).
 
-%% Sample: eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE0ODQ3MzA4OTcsImlhdCI6MTQ4NDczMDI5NywiaXNzIjoiTWFzdCBJbmMuIiwidWlkIjoiMTY4ODgxNyIsImp0aSI6ImZmMGRlYTI5ZWViYjY2MTYwZjliM2YzZTZjZDg3ZDI4IiwiYXVkIjpbImFkbWluaXN0cmF0b3IiLCJieW9jX3VzZXIiLCJlbmRfdXNlciIsImJpbGxpbmciXX0.rbF6Ewv4_vIG1gfDryd2YoE7Srd-mbXS5aI4CkAE-ZA
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
+-endif.
 
+-spec auth(binary()) -> binary() | {error, atom()}.
 auth(Authorization) ->
-    {ok, Key} = application:get_env(spread, jwt_key),
-    {ok, Iss} = application:get_env(spread, jwt_iss),
-    case jwt:decode(Authorization, Key) of
-        {ok, Claims} ->    
-            lager:info("Claims are ~p", [Claims]),
-            case maps:get(<<"iss">>, Claims) of
-                Iss ->
-                    maps:get(<<"uid">>, Claims);
-                _ ->
-                    error
-            end;
-        _Any ->
-            lager:error("Token said ~p", [_Any]),
-            error
+    case {application:get_env(spread, jwt_key), application:get_env(spread, jwt_iss)} of
+        {undefined, undefined} ->
+            <<"anonymous">>;
+        {{ok, Key}, {ok, Iss}} ->
+            case jwt:decode(Authorization, Key) of
+                {ok, Claims} ->    
+                    lager:info("Claims are ~p", [Claims]),
+                    case catch maps:get(<<"iss">>, Claims) of
+                        Iss ->
+                            try maps:get(<<"uid">>, Claims) of
+                                Uid -> Uid
+                            catch
+                                _:_ ->
+                                    {error, no_uid}
+                            end;
+                        _ ->
+                            {error, bad_issuer}
+                    end;
+                {error, Any} ->
+                    {error, Any}
+            end
     end.
+
+-ifdef(TEST).
+auth_test() ->
+    Iss = <<"test inc.">>,
+    Key = <<"53F61451CAD6231FDCF6859C6D5B88C1EBD5DC38B9F7EBD990FADD4EB8EB9063">>,
+    Uid = <<"tester@test.com">>,
+
+    application:start(crypto),
+    application:set_env(spread, jwt_key, Key),
+    application:set_env(spread, jwt_iss, Iss),
+
+    Claims = [
+        {uid, Uid}
+    ],
+    ExpirationSeconds = 86400,
+
+    {ok, Token} = jwt:encode(<<"HS256">>, Claims, ExpirationSeconds, Key),
+    ?assertEqual(auth(Token), {error, bad_issuer}),
+
+    ?assertEqual(auth(Key), {error, invalid_token}),
+
+    {ok, Token2} = jwt:encode(<<"HS256">>, [{iss, Iss} | Claims], ExpirationSeconds, Key),
+    ?assertEqual(auth(Token2), Uid),
+
+    {ok, Token3} = jwt:encode(<<"HS256">>, [{iss, Iss}], ExpirationSeconds, Key),
+    ?assertEqual(auth(Token3), {error, no_uid}).
+
+-endif.

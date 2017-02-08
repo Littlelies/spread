@@ -27,8 +27,7 @@ terminate(_Reason, _Req, _State) ->
 maybe_process(Req, State, <<"POST">>, Path, true) ->
     case spread_cowboy:get_auth(Req) of
         error ->
-            process_post(Req, State, Path, <<"anonymous">>);
-            %{ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot POST.">>, Req), State};
+            {ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot POST.">>, Req), State};
         From ->
             process_post(Req, State, Path, From)
     end;

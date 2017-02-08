@@ -66,18 +66,18 @@ handle_info({gun_down, _ConnPid, _Protocol, _Reason, _Processed, _NotProcessed},
     lager:info("[~p] Connection is down", [State#state.target]),
     {noreply, State#state{state = down}};
 handle_info({gun_response, _ConnPid, StreamRef, fin, _Status, Headers}, State) ->
-    lager:debug("[~p] No data for ~p, headers are ~p", [State#state.target, StreamRef, Headers]),
+    lager:info("[~p] No data for ~p, headers are ~p", [State#state.target, StreamRef, Headers]),
     {noreply, remove_stream(StreamRef, State)};
 handle_info({gun_response, _ConnPid, StreamRef, nofin, _Status, Headers}, State) ->
-    lager:debug("[~p] Got headers for ~p: ~p", [State#state.target, StreamRef, Headers]),
+    lager:info("[~p] Got headers for ~p: ~p", [State#state.target, StreamRef, Headers]),
     %NewState = manage_data(Headers, StreamRef, false, State),    
     {noreply, State};
 handle_info({gun_data, _ConnPid, StreamRef, nofin, Data}, State) ->
-    lager:debug("[~p] Got partial data for ~p: ~p", [State#state.target, StreamRef, Data]),
+    lager:info("[~p] Got partial data for ~p: ~p", [State#state.target, StreamRef, Data]),
     NewState = manage_data(Data, StreamRef, false, State),
     {noreply, NewState};
 handle_info({gun_data, _ConnPid, StreamRef, fin, Data}, State) ->
-    lager:debug("[~p] Got final data for ~p: ~p", [State#state.target, StreamRef, Data]),
+    lager:info("[~p] Got final data for ~p: ~p", [State#state.target, StreamRef, Data]),
     NewState = manage_data(Data, StreamRef, true, State),
     {noreply, remove_stream(StreamRef, NewState)};
 handle_info({'DOWN', _MRef, process, _ConnPid, Reason}, State) ->
@@ -146,10 +146,12 @@ manage_data(Data, StreamRef, IsFin, State) ->
     lager:info("Manage ~p in ~p", [StreamRef, State#state.streams]),
     case lists:keyfind(StreamRef, 2, State#state.streams) of
         false ->
+            Self = self(),
             {Partial, _Updates} = spread_autotree:parse_updates_and_broadcast(
                 <<(State#state.partial)/binary, Data/binary>>,
                 fun(Event) ->
-                    gen_server:cast(self, {load_binary_event, Event})
+                    lager:info("CALLBACK!"),
+                    gen_server:cast(Self, {load_binary_event, Event})
                 end),
             %% Loop with partial
             State#state{partial = Partial};

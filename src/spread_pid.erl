@@ -9,6 +9,6 @@
 
 -spec send(any(), spread_pid()) -> ok.
 send(Payload, Pid) when is_pid(Pid) ->
-    Pid ! Payload;
-send(Payload, {Pid, Any}) when is_pid(Pid) ->
-    Pid ! {Any, Payload}.
+    Pid ! Payload.
+% send(Payload, {Pid, Any}) when is_pid(Pid) ->
+%     Pid ! {Any, Payload}.

@@ -87,7 +87,7 @@ loop_to_get(Acc) ->
 
 -ifdef(TEST).
 spread_test() ->
-    os:cmd("rm -rf storage"),
+    %os:cmd("rm -rf storage"),
     application:start(syntax_tools),
     application:start(compiler),
     application:start(goldrush),
@@ -107,7 +107,7 @@ spread_test() ->
     spread:subscribe([<<"test">>], self()),
 
     lager:info("TEST: We can post new data and get the amount of warned subscribers for each sub path"),
-    SmallPayload =  <<"test small payload">>,
+    SmallPayload =  <<"test small payload but so small just to make sure we create a new file for that small payload no?">>,
     SmallTopic = [<<"test">>, <<"test1">>],
     {new, _Event, List} = spread:post(SmallTopic, SmallPayload),
     ?assertEqual(List, [[{[],0}, {[<<"test">>], 1}, {[<<"test">>, <<"test1">>], 0}]]),
@@ -123,14 +123,29 @@ spread_test() ->
         Pay,
         SmallPayload
     ),
+    ?assertEqual(os:cmd("cd apps/spread/tests && ./get.sh"), binary_to_list(SmallPayload)),
 
     lager:info("TEST: We can post new small data via HTTP"),
     os:cmd("cd apps/spread/tests && ./post_small_http.sh"),
     assert_update_received([<<"test">>]),
 
     lager:info("TEST: We can post new big data via HTTP"),
+    os:cmd("cd apps/spread/tests && ./post_big_http.sh &"),
     os:cmd("cd apps/spread/tests && ./post_big_http.sh"),
-    assert_update_received([<<"test">>, <<"image">>]).
+    assert_update_received([<<"test">>, <<"image">>]),
+    assert_update_received([<<"test">>, <<"image">>]),
+
+    lager:info("TEST: Not authenticated requests are rejected"),
+    ?assertEqual(os:cmd("cd apps/spread/tests && ./post_no_auth.sh"), "401"),
+
+    lager:info("TEST: POST without body are rejected"),
+    ?assertEqual(os:cmd("cd apps/spread/tests && ./post_no_body.sh"), "400"),
+
+    lager:info("TEST: GET of unknown resources end up in 404"),
+    ?assertEqual(os:cmd("cd apps/spread/tests && ./get_404.sh"), "404")
+.
+
+
 
 assert_update_received(Topic) ->
     receive
