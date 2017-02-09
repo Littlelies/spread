@@ -1,7 +1,7 @@
 {"1.1.0",
 [{<<"autotree">>,
   {git,"https://github.com/Littlelies/autotree.git",
-       {ref,"8da9cca3a9c8017bfed5b1bdc3ad11c6057866c9"}},
+       {ref,"a0730335d02609a157711904e2fd99eb13837042"}},
   0},
  {<<"base64url">>,{pkg,<<"base64url">>,<<"0.0.1">>},1},
  {<<"cowboy">>,
