@@ -21,7 +21,8 @@
     state = init,
     subs = [],
     subs_streams = [],
-    partial = <<>>
+    partial = <<>>,
+    iteration
 }).
 -record(stream, {
      gun_stream,
@@ -147,14 +148,14 @@ manage_data(Data, StreamRef, IsFin, State) ->
     case lists:keyfind(StreamRef, 2, State#state.streams) of
         false ->
             Self = self(),
-            {Partial, _Updates} = spread_autotree:parse_updates_and_broadcast(
+            {Partial, Iteration, _Updates} = spread_autotree:parse_updates_and_broadcast(
                 <<(State#state.partial)/binary, Data/binary>>,
                 fun(Event) ->
                     lager:info("CALLBACK!"),
                     gen_server:cast(Self, {load_binary_event, Event})
                 end),
             %% Loop with partial
-            State#state{partial = Partial};
+            State#state{partial = Partial, iteration = Iteration};
         Stream ->
             %% Send this data
             spread_core:add_data_to_event(Stream#stream.event, Data, IsFin)

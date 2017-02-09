@@ -46,16 +46,16 @@ get(Path, Pid) ->
     case spread_topic_cache:get_latest(Path) of
         error ->
             error;
-        {Date, Event} ->
+        {Iteration, Event} ->
             From = spread_event:from(Event),
             Data = spread_event:data(Event),
             FirstChunk = spread_data:to_binary(Data, Pid),
-            {Date, From, FirstChunk}
+            {Iteration, From, FirstChunk}
     end.
 
 -spec post(spread_topic:topic_name(), binary()) -> {existing | new, spread_event:event(), [any()]} | {error, any()}.
 post(Path, Payload) ->
-    spread_core:set_event(Path, atom_to_binary(node(), utf8), erlang:system_time(microsecond), Payload, true, []).
+    spread_core:set_event(Path, atom_to_binary(node(), utf8), erlang:system_time(microsecond), Payload, true).
 
 
 -spec ensure_remote(atom()) -> {existing | new, spread_event:event(), [any()]} | {error, any()}.
@@ -87,7 +87,7 @@ loop_to_get(Acc) ->
 
 -ifdef(TEST).
 spread_test() ->
-    %os:cmd("rm -rf storage"),
+    %os:cmd("rm -rf storage"), % run once, then comment and run again
     application:start(syntax_tools),
     application:start(compiler),
     application:start(goldrush),
@@ -109,8 +109,9 @@ spread_test() ->
     lager:info("TEST: We can post new data and get the amount of warned subscribers for each sub path"),
     SmallPayload =  <<"test small payload but so small just to make sure we create a new file for that small payload no?">>,
     SmallTopic = [<<"test">>, <<"test1">>],
-    {new, _Event, List} = spread:post(SmallTopic, SmallPayload),
-    ?assertEqual(List, [[{[],0}, {[<<"test">>], 1}, {[<<"test">>, <<"test1">>], 0}]]),
+    {new, _Event, [{It, List}]} = spread:post(SmallTopic, SmallPayload),
+    lager:info("List ~p", [List]),
+    ?assertEqual([{[],0}, {[<<"test">>], 1}, {[<<"test">>, <<"test1">>], 0}], List),
     assert_update_received(SmallTopic),
 
     lager:info("TEST: We can get stored data with info"),
@@ -126,7 +127,7 @@ spread_test() ->
     ?assertEqual(os:cmd("cd apps/spread/tests && ./get.sh"), binary_to_list(SmallPayload)),
 
     lager:info("TEST: We can post new small data via HTTP"),
-    os:cmd("cd apps/spread/tests && ./post_small_http.sh"),
+    lager:info("Command: ~p", [os:cmd("cd apps/spread/tests && ./post_small_http.sh")]),
     assert_update_received([<<"test">>]),
 
     lager:info("TEST: We can post new big data via HTTP"),

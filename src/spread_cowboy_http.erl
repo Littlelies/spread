@@ -78,16 +78,15 @@ send_next_chunks(Req, State) ->
 %% We upload the body by chunks, updating all subscribers at the same time
 process_post(Req0, State, Path, From) ->
     Date = get_date(Req0),
-    Prs = get_prs(Req0),
     lager:info("~p POST From ~p, Date ~p: ~p", [self(), From, Date, Path]),
     Answer = case cowboy_req:read_body(Req0, #{length => 64}) of
         {ok, Data, Req} ->
             lager:info("Got unique chunk, creating event"),
-            {_IsNew, Event, Out} = spread_core:set_event(Path, From, Date, Data, true, Prs),
+            {_IsNew, Event, Out} = spread_core:set_event(Path, From, Date, Data, true),
             true;
         {more, Data, Req} ->
             lager:info("Got first chunk, creating event ~p", [size(Data)]),
-            {IsNew, Event, Out} = spread_core:set_event(Path, From, Date, Data, false, Prs),
+            {IsNew, Event, Out} = spread_core:set_event(Path, From, Date, Data, false),
             case IsNew of
                 new ->
                     read_body(Req, Event),
@@ -126,24 +125,12 @@ get_date(Req) ->
             binary_to_integer(Etag)
     end.
 
-get_prs(Req) ->
-    QsVals = cowboy_req:parse_qs(Req),
-    case lists:keyfind(<<"prs">>, 1, QsVals) of
-        false ->
-            [];
-        RawPrs ->
-            parse_raw_prs(RawPrs)
-    end.
-
-parse_raw_prs(_) ->
-    [].
-
 format_out(Event, Out) ->
     <<"{\"", (spread_event:id(Event))/binary, "\":", (format_outs(Out))/binary, "}">>.
 
 format_outs([A | Rest]) when is_atom(A) ->
     format_outs(Rest, <<"[", (atom_to_binary(A, utf8))/binary>>);
-format_outs([A | Rest]) when is_list(A) ->
+format_outs([{_Iteration, A} | Rest]) when is_list(A) ->
     format_outs(Rest, <<"[\"local\"">>).
 
 format_outs([], Acc) ->

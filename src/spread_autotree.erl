@@ -3,50 +3,53 @@
 -export([
     subscribe/3,
     update/1,
-    get_timestamp_and_opaque/1,
+    get_iteration_and_opaque/1,
     format_updates/1,
     parse_updates_and_broadcast/2
 ]).
 
+-spec subscribe([binary()], autotree_app:iteration(), pid()) -> [{[any()], autotree_app:iteration(), any()}].
 subscribe(Path, Timestamp, Pid) ->
     autotree_app:subscribe(Path, Timestamp, Pid).
 
+-spec update(spread_event:event()) -> too_late | {autotree_app:iteration(), [{[any()], integer()}]}.
 update(Event) ->
     PathAsList = spread_topic:name(spread_event:topic(Event)),
-    Timestamp = spread_event:date(Event),
     lager:info("Update ~p", [PathAsList]),
-    autotree_app:update(PathAsList, Timestamp, Event).
+    autotree_app:update(PathAsList, Event).
 
-get_timestamp_and_opaque(TopicName) ->
-    autotree_app:get_timestamp_and_opaque(TopicName).
+-spec get_iteration_and_opaque([binary()]) -> {autotree_app:iteration(), any()} | error.
+get_iteration_and_opaque(TopicName) ->
+    autotree_app:get_iteration_and_opaque(TopicName).
 
 -spec format_updates(list()) -> binary().
 format_updates([]) -> <<>>;
 format_updates([A | Others]) ->
     <<(format_update(A))/binary, (format_updates(Others))/binary>>.
 
--spec parse_updates_and_broadcast(binary(), fun()) -> {binary(), [spread_event:event()]}.
+-spec parse_updates_and_broadcast(binary(), fun()) -> {binary(), autotree:iteration(), [spread_event:event()]}.
 parse_updates_and_broadcast(Binary, Callback) ->
     Updates = binary:split(Binary, <<"\n\n">>, [global]),
-    parse_updates_and_broadcast(Updates, Callback, []).
+    parse_updates_and_broadcast(Updates, Callback, [], <<"0">>).
 
 %%====================================================================
 %% Internal functions
 %%====================================================================
 
-
-format_update({PathAsList, Timestamp, Event}) ->
-    <<"id: ", (integer_to_binary(Timestamp))/binary,
-        "\ndata: ", (spread_utils:binary_join(PathAsList, <<"/">>))/binary ,
-        "\ndata: ", (spread_event:from(Event))/binary ,
+format_update({PathAsList, Iteration, Event}) ->
+    <<"id: ", (integer_to_binary(Iteration))/binary,
+        "\ndata: ", (spread_utils:binary_join(PathAsList, <<"/">>))/binary,
+        "\ndata: ", (spread_event:from(Event))/binary,
+        "\ndata: ", (integer_to_binary(spread_event:date(Event)))/binary,
         "\ndata: ", (spread_data:raw(spread_event:data(Event)))/binary, "\n\n">>.
 
-parse_updates_and_broadcast([PartialUpdate], _Callback, Acc) ->
-    {PartialUpdate, lists:reverse(Acc)};
-parse_updates_and_broadcast([Update | Updates], Callback, Acc) ->
-    [<<"id: ", TimestampB/binary>>, A] = binary:split(Update, <<"\n">>),
+parse_updates_and_broadcast([PartialUpdate], _Callback, Acc, Iteration) ->
+    {PartialUpdate, binary_to_integer(Iteration), lists:reverse(Acc)};
+parse_updates_and_broadcast([Update | Updates], Callback, Acc, _) ->
+    [<<"id: ", Iteration/binary>>, A] = binary:split(Update, <<"\n">>),
     [<<"data: ", PathB/binary>>, B] = binary:split(A, <<"\n">>),
-    [<<"data: ", From/binary>>, <<"data: ", Data/binary>>] = binary:split(B, <<"\n">>),
+    [<<"data: ", From/binary>>, C] = binary:split(B, <<"\n">>),
+    [<<"data: ", TimestampB/binary>>, <<"data: ", Data/binary>>] = binary:split(C, <<"\n">>),
     Date = binary_to_integer(TimestampB),
     IsFile = case Data of
         <<>> ->
@@ -55,7 +58,7 @@ parse_updates_and_broadcast([Update | Updates], Callback, Acc) ->
         _ ->
             false
     end,
-    {IsNew, Event, _} = spread_core:set_event(spread_topic:binary_to_name(PathB), From, Date, Data, IsFile, []),
+    {IsNew, Event, _} = spread_core:set_event(spread_topic:binary_to_name(PathB), From, Date, Data, IsFile),
     case {IsNew, IsFile} of
         {new, true} ->
             Callback(Event);
@@ -63,4 +66,5 @@ parse_updates_and_broadcast([Update | Updates], Callback, Acc) ->
             lager:info("No new file, no need to download ~p", [{IsNew, IsFile}]),
             ok
     end,
-    parse_updates_and_broadcast(Updates, Callback, [Event | Acc]).
+    parse_updates_and_broadcast(Updates, Callback, [Event | Acc], Iteration).
+

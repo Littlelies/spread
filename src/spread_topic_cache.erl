@@ -33,7 +33,7 @@ maybe_add(Event) ->
 
 -spec get_latest(spread_topic:topic_name()) -> {integer(), spread_event:event()} | error.
 get_latest(TopicName) ->
-    spread_autotree:get_timestamp_and_opaque(TopicName).
+    spread_autotree:get_iteration_and_opaque(TopicName).
 
 %%====================================================================
 %% gen_server callbacks

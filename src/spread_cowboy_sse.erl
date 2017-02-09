@@ -35,9 +35,9 @@ init(Req, State) ->
     
     {cowboy_loop, Req1, State, 60000, hibernate}.
 
-info({update, PathAsList, Timestamp, Event} = Message, Req, State) ->
+info({update, PathAsList, Iteration, Event} = Message, Req, State) ->
     lager:info("~p Received a message ~p", [self(), Message]),
-    cowboy_req:stream_body(spread_autotree:format_updates([{PathAsList, Timestamp, Event}]), nofin, Req),
+    cowboy_req:stream_body(spread_autotree:format_updates([{PathAsList, Iteration, Event}]), nofin, Req),
     {ok, Req, State}.
 
 terminate(_Reason, _Req, _State) ->
