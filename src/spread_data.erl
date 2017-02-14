@@ -58,7 +58,7 @@
 -spec new(spread_event:event_id(), binary(), boolean()) -> data().
 new(EventId, DataAsBinary, IsDataFinal) ->
     if
-        IsDataFinal andalso size(DataAsBinary) < 64 -> %% At 64, it is in shared space
+        IsDataFinal andalso size(DataAsBinary) < 4096 -> %% At 64, it is in shared space
             #data{
                 type = raw,
                 payload = DataAsBinary

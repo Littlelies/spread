@@ -58,7 +58,7 @@ parse_updates_and_broadcast([Update | Updates], Callback, Acc, _) ->
         _ ->
             false
     end,
-    {IsNew, Event, _} = spread_core:set_event(spread_topic:binary_to_name(PathB), From, Date, Data, IsFile),
+    {IsNew, Event, _} = spread_core:set_event(spread_topic:binary_to_name(PathB), From, Date, Data, not IsFile),
     case {IsNew, IsFile} of
         {new, true} ->
             Callback(Event);
