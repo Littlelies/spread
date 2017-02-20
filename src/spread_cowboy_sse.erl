@@ -29,7 +29,9 @@ init(Req, State) ->
     
     Req1 = cowboy_req:stream_reply(200, #{
         <<"content-type">> => <<"text/event-stream">>,
-        <<"access-control-allow-origin">> => <<"*">>     
+        <<"access-control-allow-origin">> => <<"*">>,
+        <<"cache-control">> => <<"no-cache">>,
+        <<"x-accel-buffering">> => <<"no">>
     }, Req),
     
     cowboy_req:stream_body(spread_autotree:format_updates(FirstSet), nofin, Req1),
