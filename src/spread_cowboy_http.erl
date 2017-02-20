@@ -39,8 +39,8 @@ maybe_process(Req, State, <<"OPTIONS">>, _, _) ->
     {ok, cowboy_req:reply(200, #{
         <<"content-type">> => <<"text/plain; charset=utf-8">>,
         <<"Access-Control-Allow-Origin">> => <<"*">>,
-        <<"Access-Control-Request-Headers">> => <<"authorization">>,
-        <<"Access-Control-Request-Method">> => <<"POST">>
+        <<"Access-Control-Allow-Headers">> => <<"authorization">>,
+        <<"Access-Control-Allow-Method">> => <<"POST">>
     } , <<>>, Req), State};
 maybe_process(Req, _, _, _, _) ->
     %% Method not allowed.
