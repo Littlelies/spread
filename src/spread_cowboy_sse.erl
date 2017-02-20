@@ -34,7 +34,7 @@ init(Req, State) ->
     
     cowboy_req:stream_body(spread_autotree:format_updates(FirstSet), nofin, Req1),
     
-    {cowboy_loop, Req1, State, 60000, hibernate}.
+    {cowboy_loop, Req1, State, hibernate}.
 
 info({update, PathAsList, Iteration, Event} = Message, Req, State) ->
     lager:info("~p Received a message ~p", [self(), Message]),
