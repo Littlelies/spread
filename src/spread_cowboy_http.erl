@@ -38,9 +38,9 @@ maybe_process(Req, State, <<"GET">>, Path, _) ->
 maybe_process(Req, State, <<"OPTIONS">>, _, _) ->
     {ok, cowboy_req:reply(200, #{
         <<"content-type">> => <<"text/plain; charset=utf-8">>,
-        <<"Access-Control-Allow-Origin">> => <<"*">>,
-        <<"Access-Control-Allow-Headers">> => <<"authorization">>,
-        <<"Access-Control-Allow-Method">> => <<"POST">>
+        <<"access-control-allow-origin">> => <<"*">>,
+        <<"access-control-allow-headers">> => <<"authorization">>,
+        <<"access-control-allow-method">> => <<"POST">>
     } , <<>>, Req), State};
 maybe_process(Req, _, _, _, _) ->
     %% Method not allowed.
@@ -59,10 +59,10 @@ process_get(Req, State, Path) ->
             {ok, cowboy_req:reply(404, #{}, <<"Not found">>, Req), State};
         {Date, From, FirstChunk} ->
             Req1 = cowboy_req:stream_reply(200, #{
-                <<"Content-Type">> => <<"application/octet-stream">>,
-                <<"Access-Control-Allow-Origin">> => <<"*">>,
-                <<"From">> => From,
-                <<"ETag">> => <<"\"", (integer_to_binary(Date))/binary, "\"">>
+                <<"content-type">> => <<"application/octet-stream">>,
+                <<"access-control-allow-origin">> => <<"*">>,
+                <<"from">> => From,
+                <<"etag">> => <<"\"", (integer_to_binary(Date))/binary, "\"">>
             }, Req),
             cowboy_req:stream_body(FirstChunk, nofin, Req1),
             %% @todo: respect API and send the loop right away
@@ -108,7 +108,7 @@ process_post(Req0, State, Path, From) ->
         true ->
             {ok, cowboy_req:reply(200, #{
                 <<"content-type">> => <<"text/plain; charset=utf-8">>,
-                <<"Access-Control-Allow-Origin">> => <<"*">>
+                <<"access-control-allow-origin">> => <<"*">>
             }, format_out(Event, Out), Req), State};
         false ->
             cowboy_req:reply(409, Req)
