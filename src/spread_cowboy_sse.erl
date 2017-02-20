@@ -27,6 +27,8 @@ init(Req, State) ->
 
     FirstSet = spread_autotree:subscribe(Path, Timestamp, self()),
     
+    %% Note: nginx config must have proxy_http_version 1.1; and proxy_set_header Connection "";
+
     Req1 = cowboy_req:stream_reply(200, #{
         <<"content-type">> => <<"text/event-stream">>,
         <<"access-control-allow-origin">> => <<"*">>,
