@@ -28,7 +28,8 @@ init(Req, State) ->
     FirstSet = spread_autotree:subscribe(Path, Timestamp, self()),
     
     Req1 = cowboy_req:stream_reply(200, #{
-        <<"Content-Type">> => <<"text/event-stream">>        
+        <<"Content-Type">> => <<"text/event-stream">>,
+        <<"Access-Control-Allow-Origin">> => <<"*">>     
     }, Req),
     
     cowboy_req:stream_body(spread_autotree:format_updates(FirstSet), nofin, Req1),
