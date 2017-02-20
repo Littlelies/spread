@@ -35,6 +35,11 @@ maybe_process(Req, State, <<"POST">>, _, false) ->
     {ok, cowboy_req:reply(400, #{}, <<"Missing body.">>, Req), State};
 maybe_process(Req, State, <<"GET">>, Path, _) ->
     process_get(Req, State, Path);
+aybe_process(REq, State, <<"HEAD">>, _, _) ->
+    {ok, cowboy_req:reply(200, #{
+        <<"content-type">> => <<"text/plain; charset=utf-8">>,
+        <<"Access-Control-Allow-Origin">> => <<"*">>
+    } , <<>>, Req), State};
 maybe_process(Req, _, _, _, _) ->
     %% Method not allowed.
     cowboy_req:reply(405, Req).
@@ -53,6 +58,7 @@ process_get(Req, State, Path) ->
         {Date, From, FirstChunk} ->
             Req1 = cowboy_req:stream_reply(200, #{
                 <<"Content-Type">> => <<"application/octet-stream">>,
+                <<"Access-Control-Allow-Origin">> => <<"*">>,
                 <<"From">> => From,
                 <<"ETag">> => <<"\"", (integer_to_binary(Date))/binary, "\"">>
             }, Req),
@@ -99,7 +105,8 @@ process_post(Req0, State, Path, From) ->
     case Answer of
         true ->
             {ok, cowboy_req:reply(200, #{
-                <<"content-type">> => <<"text/plain; charset=utf-8">>
+                <<"content-type">> => <<"text/plain; charset=utf-8">>,
+                <<"Access-Control-Allow-Origin">> => <<"*">>
             }, format_out(Event, Out), Req), State};
         false ->
             cowboy_req:reply(409, Req)
