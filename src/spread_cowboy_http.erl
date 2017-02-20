@@ -35,7 +35,7 @@ maybe_process(Req, State, <<"POST">>, _, false) ->
     {ok, cowboy_req:reply(400, #{}, <<"Missing body.">>, Req), State};
 maybe_process(Req, State, <<"GET">>, Path, _) ->
     process_get(Req, State, Path);
-maybe_process(Req, State, <<"HEAD">>, _, _) ->
+maybe_process(Req, State, <<"OPTIONS">>, _, _) ->
     {ok, cowboy_req:reply(200, #{
         <<"content-type">> => <<"text/plain; charset=utf-8">>,
         <<"Access-Control-Allow-Origin">> => <<"*">>
