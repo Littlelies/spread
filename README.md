@@ -39,7 +39,7 @@ Spread is inspired from other great services:
 #### In an Erlang project
 Set spread as one of your dependencies, launch your app, and start playing with `spread:set(Path, Binary)` and `spread:get(Path)`
 #### Standalone
-Please refer to [`spread_release`](https://github.com/Littlelies/spread_release) project instead.
+Please refer to [`spread_app`](https://github.com/Littlelies/spread_app) project instead.
 #### Development
 Create an empty rebar3 release, replace the apps/spread directory with the git repo, copy the deps in rebar.config, enjoy
 
