@@ -32,6 +32,7 @@ start(_StartType, _StartArgs) ->
 stop(_State) ->
     ok.
 
+%% Get in local cache the spread_topic. If you expect data from remote, please make sure the node is subscribed to it or to one of the ancestors
 -spec get(spread_topic:topic_name()) -> error | {integer(), binary(), binary()}.
 get(Path) ->
     case get(Path, self()) of

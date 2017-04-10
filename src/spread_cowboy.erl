@@ -18,7 +18,8 @@ start() ->
         {'_', [
             {"/sse/[...]", spread_cowboy_sse, []},
             {"/ws/[...]", spread_cowboy_ws, []},
-            {"/", cowboy_static, {file, "/Users/fredericminot/spread/index.html"}},
+            {"/", cowboy_static, {file, "/var/www/html/index.html"}},
+            {"/app/[...]", cowboy_static, {dir, "/var/www/html/app"}},
             {"/raw/[...]", spread_cowboy_http, []}
         ]}
     ]),
