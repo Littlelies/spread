@@ -10,10 +10,10 @@
 ]).
 
 -record(state, {
-    last_message :: integer()
+    ttl :: integer()
     }).
 
--define(TIMEOUT, 120).
+-define(TIMEOUT, 600).
 %%====================================================================
 %% API functions
 %%====================================================================
@@ -43,18 +43,18 @@ init(Req, _State) ->
     
     cowboy_req:stream_body(spread_autotree:format_updates(FirstSet), nofin, Req1),
     
-    {cowboy_loop, Req1, #state{last_message = erlang:system_time(second)}, hibernate}.
+    {cowboy_loop, Req1, #state{ttl = erlang:system_time(second) + ?TIMEOUT}, hibernate}.
 
-info({update, PathAsList, Iteration, Event} = Message, Req, #state{last_message = LastMessage} = State) ->
+info({update, PathAsList, Iteration, Event} = Message, Req, #state{ttl = TTL} = State) ->
     lager:info("~p Received a message ~p", [self(), Message]),
     Now = erlang:system_time(second),
     if
-        LastMessage + ?TIMEOUT < Now ->
+        TTL < Now ->
             lager:info("Dropping connection"),
             {stop, Req, State};
         true ->
             cowboy_req:stream_body(spread_autotree:format_updates([{PathAsList, Iteration, Event}]), nofin, Req),
-            {ok, Req, State#state{last_message = Now}, hibernate}
+            {ok, Req, State, hibernate}
     end.
 
 terminate(_Reason, _Req, _State) ->
