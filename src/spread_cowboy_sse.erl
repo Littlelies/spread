@@ -18,7 +18,7 @@
 %% API functions
 %%====================================================================
 
-init(Req, State) ->
+init(Req, _State) ->
     Path = cowboy_req:path_info(Req),
 
     Timestamp = case cowboy_req:header(<<"last-event-id">>, Req) of
