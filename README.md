@@ -45,3 +45,23 @@ Create an empty rebar3 release, replace the apps/spread directory with the git r
 
 ## Configuration
 - When a request comes in, spread can authenticate and authorizes it using JWT. `jwt_key` and `jwt_iss` are needed to decode the JWT. If not present, all requests are accepted.
+
+## Basic API
+The API is in `spread` module. Advanced API is in there.
+```
+spread:post(Path :: spread_topic:topic_name(), Value :: binary()) -> {existing | new, spread_event:event(), {too_late, spread_event:event()} | {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error}, spread_event:event() | error} | {error, any()}.
+```
+Tries to set new `Value` at `Path`. Returns the event state (if it was seen before or not), the related event object, its propagation report (too_late and current event object or {iteration, subscriber counts at each path, the previous event object})
+
+```
+spread:get(Path :: spread_topic:topic_name()) -> error | {Iteration :: integer(), From :: binary(), Value :: binary()}.
+```
+Returns the latest (locally speaking) `Value`, that was set at Spread `Iteration` by `From`.
+
+```
+spread:subscribe(Path :: spread_topic:topic_name(), Pid :: pid()) -> [{spread_topic:topic_name(), integer(), spread_event:event()}].
+```
+Subscribes your `Pid` to `Path` and any descendant. Returns a list of latest events for each path, to be updated by messages sent to `Pid` via messages of the form
+```
+{update, Path :: spread_topic:topic_name(), Iteration :: integer(), Event :: spread_event:event()}
+```

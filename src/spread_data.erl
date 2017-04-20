@@ -41,7 +41,7 @@
 
 -record(state, {}). %% Files are stored in process dictionary
 
--define(ROOT_DATA_DIR, "./storage/eventsdata/").
+-include("spread_storage.hrl").
 
 -record(file, {
     fd                  :: file:fd(),
@@ -64,7 +64,7 @@ new(EventId, DataAsBinary, IsDataFinal) ->
                 payload = DataAsBinary
             };
         true ->
-            FileName = ?ROOT_DATA_DIR ++ binary_to_list(EventId),
+            FileName = ?ROOT_STORAGE_DATA_DIR ++ binary_to_list(EventId),
             case IsDataFinal of
                 true ->
                     ok = file:write_file(FileName, DataAsBinary);
@@ -138,7 +138,7 @@ start_link() ->
 
 init([]) ->
     lager:info("[spread_data] Init started"),
-    filelib:ensure_dir(?ROOT_DATA_DIR ++ "1"),
+    filelib:ensure_dir(?ROOT_STORAGE_DATA_DIR ++ "1"),
     State = #state{},
     lager:info("[spread_data] Init done"),
     erlang:send_after(60 * 1000, self(), {gc}),

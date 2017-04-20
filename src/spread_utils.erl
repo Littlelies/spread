@@ -4,7 +4,8 @@
     read_terms/1,
     hash/1,
     microseconds_to_rfc7231/1,
-    binary_join/2
+    binary_join/1, binary_join/2,
+    escape/1
     ]).
 
 write_terms(Filename, List) ->
@@ -31,3 +32,15 @@ binary_join([Part], _Sep) ->
   Part;
 binary_join([Head|Tail], Sep) ->
   lists:foldl(fun (Value, Acc) -> <<Acc/binary, Sep/binary, Value/binary>> end, Head, Tail).
+
+-spec binary_join([binary()]) -> binary().
+binary_join([]) ->
+  <<>>;
+binary_join([Part]) ->
+  Part;
+binary_join([Head | Tail]) ->
+  lists:foldl(fun (Value, Acc) -> <<Acc/binary, "/", (escape(Value))/binary>> end, Head, Tail).
+
+-spec escape(binary()) -> binary().
+escape(Binary) ->
+    list_to_binary(http_uri:encode(binary_to_list(Binary))).

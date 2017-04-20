@@ -26,7 +26,7 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec add_connection(atom()) -> {new | existing, spread_event:event(), [any()]} | {error, any()}.
+-spec add_connection(atom()) -> {new | existing, spread_event:event(), [any()], spread_event:event() | error} | {error, any()}.
 add_connection(Target) ->
     spread_gun_peers_manager:add_connection(Target).
 

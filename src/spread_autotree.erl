@@ -2,7 +2,7 @@
 
 -export([
     subscribe/3,
-    update/1,
+    update/2,
     get_iteration_and_opaque/1,
     format_updates/1,
     parse_updates_and_broadcast/2
@@ -12,11 +12,11 @@
 subscribe(Path, Timestamp, Pid) ->
     autotree_app:subscribe(Path, Timestamp, Pid).
 
--spec update(spread_event:event()) -> too_late | {autotree_app:iteration(), [{[any()], integer()}]}.
-update(Event) ->
+-spec update(spread_event:event(), boolean()) -> {too_late, spread_event:event()} | {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error}.
+update(Event, FailIfExists) ->
     PathAsList = spread_topic:name(spread_event:topic(Event)),
     lager:info("Update ~p", [PathAsList]),
-    autotree_app:update(PathAsList, Event).
+    autotree_app:update(PathAsList, Event, FailIfExists).
 
 -spec get_iteration_and_opaque([binary()]) -> {autotree_app:iteration(), any()} | error.
 get_iteration_and_opaque(TopicName) ->
@@ -38,7 +38,7 @@ parse_updates_and_broadcast(Binary, Callback) ->
 
 format_update({PathAsList, Iteration, Event}) ->
     <<"id: ", (integer_to_binary(Iteration))/binary,
-        "\ndata: ", (spread_utils:binary_join(PathAsList, <<"/">>))/binary,
+        "\ndata: ", (spread_utils:binary_join(PathAsList))/binary,
         "\ndata: ", (spread_event:from(Event))/binary,
         "\ndata: ", (integer_to_binary(spread_event:date(Event)))/binary,
         "\ndata: ", (spread_data:raw(spread_event:data(Event)))/binary, "\n\n">>.
@@ -58,7 +58,7 @@ parse_updates_and_broadcast([Update | Updates], Callback, Acc, _) ->
         _ ->
             false
     end,
-    {IsNew, Event, _} = spread_core:set_event(spread_topic:binary_to_name(PathB), From, Date, Data, not IsFile),
+    {IsNew, Event, _, _} = spread_core:set_event(spread_topic:binary_to_name(PathB), From, Date, Data, not IsFile, false),
     case {IsNew, IsFile} of
         {new, true} ->
             Callback(Event);
