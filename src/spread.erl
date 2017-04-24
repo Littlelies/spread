@@ -10,7 +10,7 @@
 %% Application callbacks
 -export([start/2, stop/1]).
 -export([get/1, get/2]).
--export([post/2]).
+-export([maybe_post/2, post/2]).
 -export([subscribe/2]).
 -export([subscribe_locally/2]).
 -export([ensure_remote/1]).
@@ -54,12 +54,15 @@ get(Path, Pid) ->
             {Iteration, From, FirstChunk}
     end.
 
--spec post(spread_topic:topic_name(), binary()) -> {existing | new, spread_event:event(), [any()]} | {error, any()}.
+-spec post(spread_topic:topic_name(), binary()) -> {existing | new, spread_event:event(), {too_late, spread_event:event()} | {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error}, spread_event:event() | error} | {error, any()}.
 post(Path, Payload) ->
-    spread_core:set_event(Path, atom_to_binary(node(), utf8), erlang:system_time(microsecond), Payload, true).
+    spread_core:set_event(Path, atom_to_binary(node(), utf8), erlang:system_time(microsecond), Payload, true, false).
 
+-spec maybe_post(spread_topic:topic_name(), binary()) -> {existing | new, spread_event:event(), {too_late, spread_event:event()} | {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error}, spread_event:event() | error} | {error, any()}.
+maybe_post(Path, Payload) ->
+    spread_core:set_event(Path, atom_to_binary(node(), utf8), erlang:system_time(microsecond), Payload, true, true).
 
--spec ensure_remote(atom()) -> {existing | new, spread_event:event(), [any()]} | {error, any()}.
+-spec ensure_remote(atom()) -> {existing | new, spread_event:event(), [any()], spread_event:event() | error} | {error, any()}.
 ensure_remote(NodeName) ->
     spread_gun:add_connection(NodeName).
 
@@ -110,10 +113,21 @@ spread_test() ->
     lager:info("TEST: We can post new data and get the amount of warned subscribers for each sub path"),
     SmallPayload =  <<"test small payload but so small just to make sure we create a new file for that small payload no?">>,
     SmallTopic = [<<"test">>, <<"test1">>],
-    {new, _Event, [{It, List}]} = spread:post(SmallTopic, SmallPayload),
-    lager:info("List ~p", [List]),
+    {new, Event, {It, List, _}, _} = spread:post(SmallTopic, SmallPayload),
+    lager:info("List ~p, Iteration ~p", [List, It]),
     ?assertEqual([{[],0}, {[<<"test">>], 1}, {[<<"test">>, <<"test1">>], 0}], List),
     assert_update_received(SmallTopic),
+
+    lager:info("TEST: We can fail to update if data is already here"),
+    It2 = It + 1,
+    {new, _Event2, {It2, [], Event}, Event} = spread:maybe_post(SmallTopic, <<"whatever, won't be taken into account">>),
+
+    lager:info("TEST: We get error if nothing was here before"),
+    It3 = It + 2,
+    {new, _Event3, {It3, List2, error}, error} = spread:post([<<"test">>, <<"test_bogus">>], <<"something">>),
+    lager:info("LIST2 ~p", [List2]),
+    ?assertEqual([{[],0}, {[<<"test">>], 1}, {[<<"test">>, <<"test_bogus">>], 0}], List2),
+    assert_update_received([<<"test">>, <<"test_bogus">>]),
 
     lager:info("TEST: We can get stored data with info"),
     {_Time, From, Pay} = spread:get(SmallTopic),
@@ -144,7 +158,15 @@ spread_test() ->
     ?assertEqual(os:cmd("cd apps/spread/tests && ./post_no_body.sh"), "400"),
 
     lager:info("TEST: GET of unknown resources end up in 404"),
-    ?assertEqual(os:cmd("cd apps/spread/tests && ./get_404.sh"), "404")
+    ?assertEqual(os:cmd("cd apps/spread/tests && ./get_404.sh"), "404"),
+
+    lager:info("TEST: Backup data"),
+    spread_topic_cache ! {gc},
+    timer:sleep(200),
+    ok
+%    ?assertEqual(
+%        file:
+%    )
 .
 
 

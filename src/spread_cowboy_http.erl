@@ -90,11 +90,11 @@ process_post(Req0, State, Path, From) ->
     Answer = case cowboy_req:read_body(Req0, #{length => 64}) of
         {ok, Data, Req} ->
             lager:info("Got unique chunk, creating event"),
-            {_IsNew, Event, Out} = spread_core:set_event(Path, From, Date, Data, true),
+            {_IsNew, Event, Out, _PreviousOrError} = spread_core:set_event(Path, From, Date, Data, true, false),
             true;
         {more, Data, Req} ->
             lager:info("Got first chunk, creating event ~p", [size(Data)]),
-            {IsNew, Event, Out} = spread_core:set_event(Path, From, Date, Data, false),
+            {IsNew, Event, Out, _PreviousOrError} = spread_core:set_event(Path, From, Date, Data, false, false),
             case IsNew of
                 new ->
                     read_body(Req, Event),
@@ -135,14 +135,25 @@ get_date(Req) ->
     end.
 
 format_out(Event, Out) ->
-    <<"{\"", (spread_event:id(Event))/binary, "\":", (format_outs(Out))/binary, "}">>.
+    <<"{\"", (spread_event:id(Event))/binary, "\":", (format_out(Out))/binary, "}">>.
 
-format_outs([A | Rest]) when is_atom(A) ->
-    format_outs(Rest, <<"[", (atom_to_binary(A, utf8))/binary>>);
-format_outs([{_Iteration, A} | Rest]) when is_list(A) ->
-    format_outs(Rest, <<"[\"local\"">>).
+format_out({too_late, _Event}) ->
+    <<"{\"status\": \"too_late\"}">>;
+format_out({Iteration, Propagations, _Event}) ->
+    <<"{\"status\": \"ok\", \"iteration\": ", (integer_to_binary(Iteration))/binary, ", \"propagation\": ", (format_propagations(Propagations))/binary, "}">>.
 
-format_outs([], Acc) ->
-    <<Acc/binary, "]">>;
-format_outs([A | Rest], Acc) ->
-    format_outs(Rest, <<Acc/binary , ",\"", (atom_to_binary(A, utf8))/binary, "\"">>).
+format_propagations(Propagations) ->
+    <<"[", (format_propagations(Propagations, true))/binary, "]">>.
+
+format_propagations([], _) ->
+    <<>>;
+format_propagations([A | Rest], true) ->
+    <<(format_propagation(A))/binary, (format_propagations(Rest, false))/binary>>;
+format_propagations([A | Rest], false) ->
+    <<", ", (format_propagation(A))/binary, (format_propagations(Rest, false))/binary>>.
+
+format_propagation({PathAsList, Count}) ->
+    <<(format_path_as_list(PathAsList))/binary, ": ", (integer_to_binary(Count))/binary>>.
+
+format_path_as_list(Path) ->
+    spread_utils:binary_join(Path).

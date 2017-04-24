@@ -4,19 +4,21 @@
     init/0,
     get_all_event_filenames/0,
 
-    get_event/1,
-    new/5,
-    new/6,
+    get_event_from_filename/1,
+    new/7,
     set_propagate_info/2,
+    delete_event_file/1,
 
     topic/1,
     id/1,
     date/1,
     data/1,
-    from/1
+    from/1,
+
+    get_maybe_prefix/0
     ]).
 
--define(ROOT_EVENT_DIR, "./storage/events/").
+-include("spread_storage.hrl").
 
 -type event_id() :: binary().
 -type event_date() :: integer().
@@ -45,35 +47,38 @@
 %%====================================================================
 
 init() ->
-    filelib:ensure_dir(?ROOT_EVENT_DIR ++ "1").
+    filelib:ensure_dir(?ROOT_STORAGE_EVENT_DIR ++ "1").
 
 get_all_event_filenames() ->
-    filelib:wildcard(?ROOT_EVENT_DIR ++ "*").
+    filelib:wildcard(?ROOT_STORAGE_EVENT_DIR ++ "*").
 
--spec get_event(event_id()) -> event() | {error, any()}.
-get_event(EventId) ->
-    FileName = event_filename(EventId),
-    case file:consult(FileName) of
+-spec get_event_from_filename(list()) -> event() | {error, any()}.
+get_event_from_filename(FileName) ->
+    FilePath = event_file_path(FileName),
+    lager:info("reading ~p", [FilePath]),
+    case file:consult(FilePath) of
         {ok, [Event]} when is_record(Event, event) ->
             Event;
         Any ->
             {error, Any}
     end.
 
--spec new([binary()], binary(), integer(), binary(), boolean()) -> { new | existing, event()}.
-new(TopicName, From, Date, DataAsBinary, IsDataFinal) ->
-    new(TopicName, From, Date, DataAsBinary, IsDataFinal, true).
-
--spec new([binary()], binary(), integer(), binary(), boolean(), boolean()) -> { new | existing, event()}.
-new(TopicName, From, Date, DataAsBinary, IsDataFinal, IsReal) ->
+-spec new([binary()], binary(), integer(), binary(), boolean(), boolean(), boolean()) -> { new | existing, event()}.
+new(TopicName, From, Date, DataAsBinary, IsDataFinal, IsReal, FailIfExists) ->
     {TopicId, Topic} = spread_topic:new(TopicName),
-    Id = <<TopicId/binary, "_", (integer_to_binary(Date))/binary, "_", From/binary>>,
+    Maybe = case FailIfExists of
+        true ->
+            <<(?MAYBE_PREFIX)/binary, "_">>;
+        false ->
+            <<>>
+    end,
+    Id = <<Maybe/binary, TopicId/binary, "_", (integer_to_binary(Date))/binary, "_", From/binary>>,
     case IsReal of
         true ->
             case get_event(Id) of
-                {error, _} ->
+                {error, _, _} ->
                     Event = make_new_event(Id, From, Date, Topic, DataAsBinary, IsDataFinal),
-                    store_event(Event),
+                    store_event(Event, true),
                     {new, Event};
                 Event ->
                     {existing, Event}
@@ -86,7 +91,15 @@ new(TopicName, From, Date, DataAsBinary, IsDataFinal, IsReal) ->
 -spec set_propagate_info(event(), any()) -> any().    
 set_propagate_info(Event, PropageInfo) ->
     UpdatedEvent = get_event(Event#event.id),
-    store_event(UpdatedEvent#event{propagate_status = PropageInfo}).
+    store_event(UpdatedEvent#event{propagate_status = PropageInfo}, false).
+
+-spec delete_event_file(event()) -> ok | {error, any()}.
+delete_event_file(Event) ->
+    FileName = event_file_path(Event#event.id, true),
+    file:delete(FileName).
+
+get_maybe_prefix() ->
+    ?MAYBE_PREFIX.
 
 %%====================================================================
 %% Accessors
@@ -110,15 +123,40 @@ from(Event) ->
 %%====================================================================
 %% Internal functions
 %%====================================================================
+-spec get_event(event_id()) -> event() | {error, any(), any()}.
+get_event(EventId) ->
+    case get_event_from_filename(binary_to_list(EventId)) of
+        {error, Any} ->
+            case get_event_from_filename(binary_to_list(EventId) ++ ".tmp") of
+                {error, Any2} ->
+                    {error, Any, Any2};
+                Event ->
+                    Event
+            end;
+        Event ->
+            Event
+    end.
 
--spec store_event(event()) -> any().
-store_event(Event) when is_record(Event, event) ->
-    FileName = event_filename(Event#event.id),
-    spread_utils:write_terms(FileName, [Event]).
+-spec store_event(event(), boolean()) -> ok | {error, any()}.
+store_event(Event, IsTemp) when is_record(Event, event) ->
+    FileName = event_file_path(Event#event.id, IsTemp),
+    spread_utils:write_terms(FileName, [Event]),
+    case IsTemp of
+        false ->
+            file:delete(event_file_path(Event#event.id, true));
+        true ->
+            ok
+    end.
 
--spec event_filename(event_id()) -> list().
-event_filename(EventId) ->
-    ?ROOT_EVENT_DIR ++ binary_to_list(EventId).
+-spec event_file_path(list()) -> list().
+event_file_path(FileName) ->
+    ?ROOT_STORAGE_EVENT_DIR ++ FileName.
+
+-spec event_file_path(event_id(), boolean()) -> list().
+event_file_path(EventId, true) ->
+    event_file_path(binary_to_list(EventId) ++ ".tmp");
+event_file_path(EventId, false) ->
+    event_file_path(binary_to_list(EventId)).
 
 make_new_event(Id, From, Date, Topic, DataAsBinary, IsDataFinal) ->
     Data = spread_data:new(Id, DataAsBinary, IsDataFinal),
