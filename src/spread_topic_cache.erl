@@ -149,12 +149,13 @@ do_move_history(FreeFiles) ->
 filter_out_open_data(OldFiles) ->
     Open = insert_all_open_files(),
     lager:info("OPEN ~p", [Open]),
-    do_filter_out_open_data(OldFiles, []),
-    flush_all_open_files().
+    Out = do_filter_out_open_data(OldFiles, []),
+    flush_all_open_files(),
+    Out.
 
 insert_all_open_files() ->
     List = re:split(os:cmd("lsof +d " ++ ?ROOT_STORAGE_DATA_DIR ++ " | tail -n +2 | awk '{print $9}'"), "\n", [{return, list}]),
-    [put({temp_open, data_to_event(L)}, open) || L  <- List].
+    [put_file_in_dict(L) || L  <- List].
 
 flush_all_open_files() ->
     [erase({temp_open, L}) || {temp_open, L} <- get_keys()].
@@ -181,3 +182,7 @@ move_file_and_its_data(File) ->
     file:rename(File, re:replace(File, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
     DataFile = re:replace(File, ?EVENT_SUB_PATH, ?DATA_SUB_PATH, [{return, list}]),
     file:rename(DataFile, re:replace(DataFile, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])).
+
+put_file_in_dict(L) ->
+    EventFileName = data_to_event(L),
+    put({temp_open, EventFileName}, EventFileName).
