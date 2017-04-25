@@ -135,10 +135,8 @@ move_history() ->
     %% Get all old files
     AllEventFilenames = spread_event:get_all_event_filenames(),
     {_, OldFiles} = filter_out_old_events_per_topic(AllEventFilenames, []),
-    lager:info("OLD FILES ~p", [OldFiles]),
     %% Get all opened big files
     FreeFiles = filter_out_open_data(OldFiles),
-    lager:info("MOVING ~p", [FreeFiles]),
     %% Move them
     do_move_history(FreeFiles).
 
@@ -185,4 +183,5 @@ move_file_and_its_data(File) ->
 
 put_file_in_dict(L) ->
     EventFileName = data_to_event(L),
-    put({temp_open, EventFileName}, EventFileName).
+    put({temp_open, EventFileName}, EventFileName),
+    EventFileName.
