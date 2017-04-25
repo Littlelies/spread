@@ -28,7 +28,9 @@
 %% API functions
 %%====================================================================
 
--spec maybe_add(spread_event:event(), boolean()) -> {autotree_app:iteration(), [{[any()], integer()}], spread_event:event()} | {too_late, spread_event:event()} | {error, any()}.
+-spec maybe_add(spread_event:event() | {error, any()}, boolean()) -> {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error} | {too_late, spread_event:event()} | {error, any()}.
+maybe_add({error, Any}, _FailIfExists) ->
+    {error, Any};
 maybe_add(Event, FailIfExists) ->
     spread_autotree:update(Event, FailIfExists).
 

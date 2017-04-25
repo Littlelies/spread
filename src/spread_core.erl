@@ -31,7 +31,7 @@ add_data_to_event(Event, Data, IsDataFinal) ->
     CurrentData = spread_event:data(Event),
     spread_data:update_with_more_data(CurrentData, Data, IsDataFinal).
 
--spec propagate(spread_event:event(), boolean()) -> {too_late, spread_event:event()} | {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error}.
+-spec propagate(spread_event:event(), boolean()) -> {too_late, spread_event:event()} | {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error} | {error, any()}.
 propagate(Event, FailIfExists) ->
     spread_topic_cache:maybe_add(Event, FailIfExists).
 
@@ -40,5 +40,6 @@ get_previous_event({too_late, Event}) ->
 get_previous_event({_Iteration, _PropagationReport, error}) ->
     error;
 get_previous_event({_Iteration, _PropagationReport, Event}) ->
-    Event.
-
+    Event;
+get_previous_event({error, _Any}) ->
+    error.
