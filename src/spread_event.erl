@@ -127,7 +127,7 @@ from(Event) ->
 get_event(EventId) ->
     case get_event_from_filename(binary_to_list(EventId)) of
         {error, Any} ->
-            case get_event_from_filename(binary_to_list(EventId) ++ ".tmp") of
+            case get_event_from_filename(binary_to_list(EventId) ++ ?TEMP_EXTENSION) of
                 {error, Any2} ->
                     {error, Any, Any2};
                 Event ->
@@ -154,7 +154,7 @@ event_file_path(FileName) ->
 
 -spec event_file_path(event_id(), boolean()) -> list().
 event_file_path(EventId, true) ->
-    event_file_path(binary_to_list(EventId) ++ ".tmp");
+    event_file_path(binary_to_list(EventId) ++ ?TEMP_EXTENSION);
 event_file_path(EventId, false) ->
     event_file_path(binary_to_list(EventId)).
 

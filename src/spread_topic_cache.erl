@@ -144,7 +144,7 @@ move_history() ->
 
 do_move_history(FreeFiles) ->
     lager:info("MOVING ~p", [FreeFiles]),
-    [move_file_and_its_data(maybe_add_local(File)) || File <- FreeFiles].
+    [maybe_move_file_and_its_data(maybe_add_local(File)) || File <- FreeFiles].
 
 filter_out_open_data(OldFiles) ->
     Open = insert_all_open_files(),
@@ -178,10 +178,17 @@ maybe_add_local([$/ | _] = FilePath) ->
 maybe_add_local(FilePath) ->
     "./" ++ FilePath.
 
-move_file_and_its_data(File) ->
-    file:rename(File, re:replace(File, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
-    DataFile = re:replace(File, ?EVENT_SUB_PATH, ?DATA_SUB_PATH, [{return, list}]),
-    file:rename(DataFile, re:replace(DataFile, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])).
+maybe_move_file_and_its_data(File) ->
+    case re:split(File, ?TEMP_EXTENSION, [{return, list}]) of
+        [_] ->    
+            file:rename(File, re:replace(File, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
+            DataFile = re:replace(File, ?EVENT_SUB_PATH, ?DATA_SUB_PATH, [{return, list}]),
+            file:rename(DataFile, re:replace(DataFile, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
+            {moved, File};
+        _ ->
+            lager:info("tmp event, do not move it"),
+            {skipped, File}
+    end.
 
 put_file_in_dict(L) ->
     EventFileName = data_to_event(L),

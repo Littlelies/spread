@@ -12,3 +12,4 @@
 -define(ROOT_HISTORY_EVENT_DIR, ?ROOT_HISTORY_DIR ++ ?EVENT_SUB_PATH).
 
 -define(MAYBE_PREFIX, <<"maybe">>).
+-define(TEMP_EXTENSION, ".tmp").
