@@ -2,6 +2,7 @@
 %% @doc spread topic cache. Supposed to be fast for lookups
 %% So we use autotree
 %% When we start, we look into cached events, only keep latest ones, fill autotree
+%% @todo: Attempt to propagate again tmp files? No need, it will be handled automatically, since we restart. But file won't be renamed. SO we just need to remove tmp files manually.
 %% @end
 %%%-------------------------------------------------------------------
 -module(spread_topic_cache).
