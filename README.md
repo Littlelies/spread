@@ -48,9 +48,9 @@ Create an empty rebar3 release, replace the apps/spread directory with the git r
 
 ## HTTP API
 
-GET raw data (`/raw`) like this: `http://localhost:8080/raw/<your path goes here>`
+GET raw data (`/raw`) like this: `http://localhost:8080/raw/<your escaped path goes here>`
 
-POST changes to same path, with the right headers (etag to specify date of event, auth for JWT) and payload
+POST changes to same path, with the right headers (`etag` to specify date of event, `authorization` for JWT auth) and payload
 
 Subscribe to events using either websockets (`/wss`) or Server Side Events (`/sse`)
 
