@@ -1,5 +1,5 @@
 ## Spread
-_Spread is a distributed cache application running on nodes (like servers, devices, browsers) that manages the synchronization of your data and generate events when a change happens._
+_Spread is a distributed cache application running on nodes (like servers, devices, browsers) that streams the latest version of your data, manages synchronization and generate events when a change happens._
 
 #### Data you need at a place is automatically stored locally
 Spread uses a [topic based publish–subscribe pattern](https://en.wikipedia.org/wiki/Publish%E2%80%93subscribe_pattern), so you just tell Spread what you are locally interested in, giving:
@@ -46,16 +46,16 @@ Create an empty rebar3 release, replace the apps/spread directory with the git r
 ## Configuration
 - When a request comes in, spread can authenticate and authorizes it using JWT. `jwt_key` and `jwt_iss` are needed to decode the JWT. If not present, all requests are accepted.
 
-## HTTP API
+## HTTP API (comes with HTTP2 and TLS support)
 
 GET raw data (`/raw`) like this: `http://localhost:8080/raw/<your escaped path goes here>`
 
 POST changes to same path, with the right headers (`etag` to specify date of event, `authorization` for JWT auth) and payload
 
-Subscribe to events using either websockets (`/wss`) or Server Side Events (`/sse`)
+Subscribe to events using either websockets (`/wss`) or Server Side Events (`/sse`). The API on these interfaces is subject to evolution.
 
 ## Basic Erlang API
-The API is in `spread` module. Advanced API is in there.
+The API is in `spread` module. Advanced API is in there. Basic stuff is described below.
 ```
 spread:post(Path :: spread_topic:topic_name(), Value :: binary()) -> {existing | new, spread_event:event(), {too_late, spread_event:event()} | {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error}, spread_event:event() | error} | {error, any()}.
 ```
