@@ -24,8 +24,19 @@ get_iteration_and_opaque(TopicName) ->
 
 -spec format_updates(list()) -> binary().
 format_updates([]) -> <<>>;
-format_updates([A | Others]) ->
-    <<(format_update(A))/binary, (format_updates(Others))/binary>>.
+format_updates(Updates) -> format_updates(Updates, undefined).
+
+format_updates([A], undefined) ->
+    format_update(A);
+format_updates([{PathAsList, _Iteration, Event}], LastIteration) ->
+    format_update({PathAsList, LastIteration, Event});
+format_updates([{PathAsList, Iteration, Event} | Others], LastIteration) ->
+    if
+        LastIteration < Iteration ->
+            <<(format_update({PathAsList, Iteration, Event}))/binary, (format_updates(Others, Iteration))/binary>>;
+        true ->
+            <<(format_update({PathAsList, Iteration, Event}))/binary, (format_updates(Others, LastIteration))/binary>>
+    end.
 
 -spec parse_updates_and_broadcast(binary(), fun()) -> {binary(), autotree:iteration(), [spread_event:event()]}.
 parse_updates_and_broadcast(Binary, Callback) ->
