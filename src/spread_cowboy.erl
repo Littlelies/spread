@@ -23,7 +23,7 @@ start() ->
             {"/raw/[...]", spread_cowboy_http, []}
         ]}
     ]),
-    cowboy:start_clear(http_listener, 100,
+    cowboy:start_clear(http_listener,
         [{port, 8080}],
         #{env => #{dispatch => Dispatch}, request_timeout => 60000}
     ).
