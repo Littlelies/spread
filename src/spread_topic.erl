@@ -37,4 +37,4 @@ name_as_binary(TopicName) ->
     spread_utils:binary_join(TopicName).
 
 binary_to_name(Binary) ->
-    binary:split(Binary, <<"/">>, [global]).
+    [list_to_binary(http_uri:decode(X)) || X <- re:split(Binary, <<"/">>, [{return, list}])].
