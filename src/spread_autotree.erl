@@ -24,12 +24,15 @@ get_iteration_and_opaque(TopicName) ->
 
 -spec format_updates(list()) -> binary().
 format_updates([]) -> <<>>;
-format_updates(Updates) -> format_updates(Updates, undefined).
+format_updates(Updates) -> format_updates(Updates, 0).
 
-format_updates([A], undefined) ->
-    format_update(A);
-format_updates([{PathAsList, _Iteration, Event}], LastIteration) ->
-    format_update({PathAsList, LastIteration, Event});
+format_updates([{PathAsList, Iteration, Event}], LastIteration) ->
+    if
+        LastIteration < Iteration ->
+            format_update({PathAsList, Iteration, Event});
+        true ->
+            format_update({PathAsList, LastIteration, Event})
+    end;
 format_updates([{PathAsList, Iteration, Event} | Others], LastIteration) ->
     if
         LastIteration < Iteration ->
