@@ -123,7 +123,7 @@ add_subscriptions([Sub | Subs], State) ->
 
 add_binary_stream(Event, State) ->
     Stream = gun:get(State#state.connpid,
-        spread_topic:name_as_binary(spread_event:topic(Event))),
+        <<"/raw/", (spread_topic:name_as_binary(spread_event:topic(Event)))/binary>>),
     add_stream(Stream, Event, State).
 
 add_stream(Stream, Event, State) ->
