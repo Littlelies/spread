@@ -158,7 +158,8 @@ manage_data(Data, StreamRef, IsFin, State) ->
             State#state{partial = Partial, iteration = Iteration};
         Stream ->
             %% Send this data
-            spread_core:add_data_to_event(Stream#stream.event, Data, IsFin)
+            spread_core:add_data_to_event(Stream#stream.event, Data, IsFin),
+            State
     end.
 
 get_host_and_port(Target) ->
