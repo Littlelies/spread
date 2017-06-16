@@ -25,7 +25,11 @@ start() ->
     ]),
     cowboy:start_clear(http_listener,
         [{port, 8080}],
-        #{env => #{dispatch => Dispatch}, request_timeout => 60000}
+        #{
+            env => #{dispatch => Dispatch}
+            ,request_timeout => 60000,
+            %,stream_handlers => [cowboy_compress_h, cowboy_stream_h]
+        }
     ).
 
 get_auth(Req) ->
