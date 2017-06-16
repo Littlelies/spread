@@ -27,7 +27,7 @@ start() ->
         [{port, 8080}],
         #{
             env => #{dispatch => Dispatch}
-            ,request_timeout => 60000,
+            ,request_timeout => 60000
             %,stream_handlers => [cowboy_compress_h, cowboy_stream_h]
         }
     ).
