@@ -90,8 +90,13 @@ new(TopicName, From, Date, DataAsBinary, IsDataFinal, IsReal, FailIfExists) ->
 
 -spec set_propagate_info(event(), any()) -> any().    
 set_propagate_info(Event, PropageInfo) ->
-    UpdatedEvent = get_event(Event#event.id),
-    store_event(UpdatedEvent#event{propagate_status = PropageInfo}, false).
+    case get_event(Event#event.id) of
+        {error, Any, Any2} ->
+            lager:error("Failed to get ~p: ~p ~p", [Event#event.id, Any, Any2]),
+            error;
+        UpdatedEvent ->
+            store_event(UpdatedEvent#event{propagate_status = PropageInfo}, false)
+    end.
 
 -spec delete_event_file(event()) -> ok | {error, any()}.
 delete_event_file(Event) ->
