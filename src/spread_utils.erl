@@ -37,9 +37,9 @@ binary_join([Head|Tail], Sep) ->
 binary_join([]) ->
   <<>>;
 binary_join([Part]) ->
-  Part;
+  escape(Part);
 binary_join([Head | Tail]) ->
-  lists:foldl(fun (Value, Acc) -> <<Acc/binary, "/", (escape(Value))/binary>> end, Head, Tail).
+  lists:foldl(fun (Value, Acc) -> <<Acc/binary, "/", (escape(Value))/binary>> end, escape(Head), Tail).
 
 -spec escape(binary()) -> binary().
 escape(Binary) ->
