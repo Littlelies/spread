@@ -115,8 +115,10 @@ add_subscriptions([], State) ->
 add_subscriptions([Sub | Subs], State) ->
     lager:info("Adding subscription ~p to ~p", [Sub, State]),
     % @todo: what happens when we do that and connection is down???
+    SubPath = <<"/sse/", (spread_topic:name_as_binary(spread_sub:path(Sub)))/binary>>,
+    lager:info("Path is ~p", [SubPath]),
     Stream = gun:get(State#state.connpid,
-        <<"/sse/", (spread_topic:name_as_binary(spread_sub:path(Sub)))/binary>>,
+        SubPath,
         [
             {<<"last-event-id">>, integer_to_list(spread_sub:timestamp(Sub))}
         ]),
