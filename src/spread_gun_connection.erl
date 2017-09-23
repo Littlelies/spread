@@ -156,7 +156,7 @@ remove_stream(StreamRef, State) ->
     SubStreams = State#state.subs_streams,
     {OldSubStream, NewSubStreams} = case lists:keytake(StreamRef, 2, SubStreams) of
         {value, Tuple, NewTuples} ->
-            {Tuple, NewTuples};
+            {Tuple#sub_stream.sub, NewTuples};
         false ->
             {not_a_sub_stream, SubStreams}
     end,
