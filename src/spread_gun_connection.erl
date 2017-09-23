@@ -41,7 +41,8 @@ handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
 handle_cast({subscribe, Sub}, State) when State#state.state =/= init ->
-    {noreply, add_subscriptions([Sub], State)};
+    %% @todo: avoid duplicates??
+    {noreply, add_subscriptions([Sub], State#state{subs = [Sub | State#state.subs]})};
 handle_cast({load_binary_event, Event}, State) ->
     {noreply, add_binary_stream(Event, State)};
 handle_cast(_Msg, State) ->
@@ -112,7 +113,7 @@ code_change(_OldVsn, State, _Extra) ->
 add_subscriptions([], State) ->
     State;
 add_subscriptions([Sub | Subs], State) ->
-    lager:info("Adding subscription ~p", [State]),
+    lager:info("Adding subscription ~p to ~p", [Sub, State]),
     % @todo: what happens when we do that and connection is down???
     Stream = gun:get(State#state.connpid,
         <<"/sse/", (spread_topic:name_as_binary(spread_sub:path(Sub)))/binary>>,
