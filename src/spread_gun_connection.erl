@@ -28,6 +28,10 @@
      gun_stream,
      event
 }).
+-record(sub_stream, {
+    gun_stream,
+    sub
+}).
 -type state() :: #state{}.
 
 start_link(Target) ->
@@ -69,7 +73,8 @@ handle_info({gun_down, _ConnPid, _Protocol, _Reason, _Processed, _NotProcessed},
     {noreply, State#state{state = down}};
 handle_info({gun_response, _ConnPid, StreamRef, fin, _Status, Headers}, State) ->
     lager:info("[~p] No data for ~p, headers are ~p", [State#state.target, StreamRef, Headers]),
-    {noreply, remove_stream(StreamRef, State)};
+    {_, NewState} = remove_stream(StreamRef, State),
+    {noreply, NewState};
 handle_info({gun_response, _ConnPid, StreamRef, nofin, _Status, Headers}, State) ->
     lager:info("[~p] Got headers for ~p: ~p", [State#state.target, StreamRef, Headers]),
     %NewState = manage_data(Headers, StreamRef, false, State),    
@@ -80,8 +85,16 @@ handle_info({gun_data, _ConnPid, StreamRef, nofin, Data}, State) ->
     {noreply, NewState};
 handle_info({gun_data, _ConnPid, StreamRef, fin, Data}, State) ->
     lager:info("[~p] Got final data for ~p: ~p", [State#state.target, StreamRef, Data]),
-    NewState = manage_data(Data, StreamRef, true, State),
-    {noreply, remove_stream(StreamRef, NewState)};
+    NewState1 = manage_data(Data, StreamRef, true, State),
+    {OldSub, NewState2} = remove_stream(StreamRef, NewState1),
+    NewState = case OldSub of
+        not_a_sub_stream ->
+            NewState2;
+        _ ->
+            lager:info("Reconnect sub ~p", [OldSub]),
+            add_subscriptions([OldSub], NewState2)
+    end,
+    {noreply, NewState};
 handle_info({'DOWN', _MRef, process, _ConnPid, Reason}, State) ->
     lager:error("[~p] Gun connection is dead because of a gun bug: ~p", [State#state.target, Reason]),
     {stop, Reason, ok, State};
@@ -122,7 +135,7 @@ add_subscriptions([Sub | Subs], State) ->
         [
             {<<"last-event-id">>, integer_to_list(spread_sub:timestamp(Sub))}
         ]),
-    add_subscriptions(Subs, add_subs_stream(Stream, State)).
+    add_subscriptions(Subs, add_subs_stream(Stream, Sub, State)).
 
 add_binary_stream(Event, State) ->
     Stream = gun:get(State#state.connpid,
@@ -132,8 +145,8 @@ add_binary_stream(Event, State) ->
 add_stream(Stream, Event, State) ->
     State#state{streams = [#stream{gun_stream = Stream, event = Event} | State#state.streams]}.
 
-add_subs_stream(Stream, State) ->
-    State#state{subs_streams = [Stream | State#state.subs_streams]}.
+add_subs_stream(Stream, Sub, State) ->
+    State#state{subs_streams = [#sub_stream{gun_stream = Stream, sub = Sub} | State#state.subs_streams]}.
 
 
 remove_stream(StreamRef, State) ->
@@ -141,9 +154,14 @@ remove_stream(StreamRef, State) ->
     NewStreams = lists:keydelete(StreamRef, 2, Streams),
 
     SubStreams = State#state.subs_streams,
-    NewSubStreams = lists:keydelete(StreamRef, 2, SubStreams),
+    {OldSubStream, NewSubStreams} = case lists:keytake(StreamRef, 2, SubStreams) of
+        {value, Tuple, NewTuples} ->
+            {Tuple, NewTuples};
+        false ->
+            {not_a_sub_stream, SubStreams}
+    end,
 
-    State#state{streams = NewStreams, subs_streams = NewSubStreams}.
+    {OldSubStream, State#state{streams = NewStreams, subs_streams = NewSubStreams}}.
 
 -spec manage_data(binary(), any(), boolean(), state()) -> state().
 manage_data(Data, StreamRef, IsFin, State) ->
@@ -154,7 +172,6 @@ manage_data(Data, StreamRef, IsFin, State) ->
             {Partial, Iteration, _Updates} = spread_autotree:parse_updates_and_broadcast(
                 <<(State#state.partial)/binary, Data/binary>>,
                 fun(Event) ->
-                    lager:info("CALLBACK!"),
                     gen_server:cast(Self, {load_binary_event, Event})
                 end),
             %% Loop with partial
