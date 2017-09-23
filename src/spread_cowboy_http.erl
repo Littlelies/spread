@@ -28,6 +28,9 @@ maybe_process(Req, State, <<"POST">>, Path, true) ->
     case spread_cowboy:get_auth(Req) of
         error ->
             {ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot POST.">>, Req), State};
+        {error, Reason} ->
+            lager:error("Error auth ~p", [Reason]),
+            {ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot POST.">>, Req), State};
         From ->
             process_post(Req, State, Path, From)
     end;
