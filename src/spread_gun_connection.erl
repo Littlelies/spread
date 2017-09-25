@@ -56,6 +56,7 @@ handle_info({init, Target}, State) ->
     {Host, Port} = get_host_and_port(Target),
     case gun:open(Host, Port, #{protocols => [http2]}) of
         {ok, ConnPid} ->
+            _MRef = monitor(process, ConnPid),
             Subs = spread_gun_subscription_manager:get_subs(),
             {noreply, State#state{connpid = ConnPid, subs = Subs, state = down}};
         {error, Reason} ->
