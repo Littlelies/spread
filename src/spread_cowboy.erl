@@ -20,9 +20,9 @@ start() ->
             {"/ws/[...]", spread_cowboy_ws, []},
             {"/socket.io/[...]", spread_cowboy_socket_io, []},
             {"/jwttoken", spread_jwt_auth, []},
+            {"/raw/[...]", spread_cowboy_http, []},
             {"/", cowboy_static, {file, "/var/www/html/index.html"}},
-            {"/app/[...]", cowboy_static, {dir, "/var/www/html/app"}},
-            {"/raw/[...]", spread_cowboy_http, []}
+            {"/[...]", cowboy_static, {dir, "/var/www/html"}}
         ]}
     ]),
     cowboy:start_clear(http_listener,
