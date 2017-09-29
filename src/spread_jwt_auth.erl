@@ -34,7 +34,7 @@ auth(Authorization) ->
     end.
 
 generate_token() ->
-    Random = integer_to_binary(erlang:unique_integer([positive, monotonic])),
+    Random = integer_to_binary(erlang:system_time(microsecond)),
     case {application:get_env(spread, jwt_key), application:get_env(spread, jwt_iss)} of
         {undefined, undefined} ->
             <<"anonymous">>;
