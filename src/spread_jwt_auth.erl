@@ -15,7 +15,7 @@ auth(Authorization) ->
             <<"anonymous">>;
         {{ok, Key}, {ok, Iss}} ->
             case jwt:decode(Authorization, Key) of
-                {ok, Claims} ->    
+                {ok, Claims} ->
                     lager:info("Claims are ~p", [Claims]),
                     case catch maps:get(<<"iss">>, Claims) of
                         Iss ->
@@ -43,7 +43,8 @@ generate_token() ->
                 {<<"iss">>, Iss},
                 {<<"uid">>, <<Random/binary, "@", (node_name_to_binary())/binary>>}
             ],
-            jwt:encode(<<"HS256">>, Claims, Key) %% Tokens never expire
+            {ok, Token} = jwt:encode(<<"HS256">>, Claims, Key),
+            Token %% Tokens never expire
     end.
 
 init(Req, State) ->
