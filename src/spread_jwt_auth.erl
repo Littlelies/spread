@@ -12,7 +12,7 @@
 auth(Authorization) ->
     case {application:get_env(spread, jwt_key), application:get_env(spread, jwt_iss)} of
         {undefined, undefined} ->
-            <<"anonymous">>;
+            Authorization;
         {{ok, Key}, {ok, Iss}} ->
             case jwt:decode(Authorization, Key) of
                 {ok, Claims} ->
@@ -33,18 +33,19 @@ auth(Authorization) ->
             end
     end.
 
-generate_token() ->
+generate_id_and_token() ->
     Random = integer_to_binary(erlang:system_time(microsecond)),
+    Uid = <<Random/binary, "@", (node_name_to_binary())/binary>>,
     case {application:get_env(spread, jwt_key), application:get_env(spread, jwt_iss)} of
         {undefined, undefined} ->
-            <<"anonymous">>;
+            Uid;
         {{ok, Key}, {ok, Iss}} ->
             Claims = [
                 {<<"iss">>, Iss},
-                {<<"uid">>, <<Random/binary, "@", (node_name_to_binary())/binary>>}
+                {<<"uid">>, Uid}
             ],
             {ok, Token} = jwt:encode(<<"HS256">>, Claims, Key),
-            Token %% Tokens never expire
+            jsx:encode([{<<"uid">>, Uid}, {<<"token">>, Token}]) %% Tokens never expire
     end.
 
 init(Req, State) ->
@@ -56,9 +57,9 @@ terminate(_Reason, _Req, _State) ->
 
 maybe_process(Req, State, <<"POST">>) ->
     {ok, cowboy_req:reply(200, #{
-        <<"content-type">> => <<"text/plain; charset=utf-8">>,
+        <<"content-type">> => <<"application/json; charset=utf-8">>,
         <<"access-control-allow-origin">> => <<"*">>
-    } , generate_token(), Req), State};
+    } , generate_id_and_token(), Req), State};
 maybe_process(Req, State, <<"OPTIONS">>) ->
     {ok, cowboy_req:reply(200, #{
         <<"content-type">> => <<"text/plain; charset=utf-8">>,
@@ -70,7 +71,7 @@ maybe_process(Req, _State, _) ->
     cowboy_req:reply(405, Req).
 
 node_name_to_binary() ->
-    re:replace(atom_to_list(node()),"@","",[{return, binary}]).
+    re:replace(atom_to_list(node()),"@","_",[{return, binary}]).
 
 -ifdef(TEST).
 auth_test() ->
