@@ -18,6 +18,8 @@ start() ->
         {'_', [
             {"/sse/[...]", spread_cowboy_sse, []},
             {"/ws/[...]", spread_cowboy_ws, []},
+            {"/socket.io/[...]", spread_cowboy_socket_io, []},
+            {"/jwttoken", spread_jwt_auth, []},
             {"/", cowboy_static, {file, "/var/www/html/index.html"}},
             {"/app/[...]", cowboy_static, {dir, "/var/www/html/app"}},
             {"/raw/[...]", spread_cowboy_http, []}

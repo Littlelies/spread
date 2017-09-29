@@ -1,6 +1,8 @@
 -module(spread_jwt_auth).
 
 -export([auth/1]).
+-export([init/2, terminate/3]).
+
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -30,6 +32,44 @@ auth(Authorization) ->
                     {error, Any}
             end
     end.
+
+generate_token() ->
+    Random = integer_to_binary(erlang:unique_integer([positive, monotonic])),
+    case {application:get_env(spread, jwt_key), application:get_env(spread, jwt_iss)} of
+        {undefined, undefined} ->
+            <<"anonymous">>;
+        {{ok, Key}, {ok, Iss}} ->
+            Claims = [
+                {<<"iss">>, Iss},
+                {<<"uid">>, <<Random/binary, "@", (node_name_to_binary())/binary>>}
+            ],
+            jwt:encode(<<"HS256">>, Claims, Key) %% Tokens never expire
+    end.
+
+init(Req, State) ->
+    Method = cowboy_req:method(Req),
+    maybe_process(Req, State, Method).
+
+terminate(_Reason, _Req, _State) ->
+    ok.
+
+maybe_process(Req, State, <<"POST">>) ->
+    {ok, cowboy_req:reply(200, #{
+        <<"content-type">> => <<"text/plain; charset=utf-8">>,
+        <<"access-control-allow-origin">> => <<"*">>
+    } , generate_token(), Req), State};
+maybe_process(Req, State, <<"OPTIONS">>) ->
+    {ok, cowboy_req:reply(200, #{
+        <<"content-type">> => <<"text/plain; charset=utf-8">>,
+        <<"access-control-allow-origin">> => <<"*">>,
+        <<"access-control-allow-headers">> => <<"authorization">>,
+        <<"access-control-allow-method">> => <<"POST">>
+    } , <<>>, Req), State};
+maybe_process(Req, _State, _) ->
+    cowboy_req:reply(405, Req).
+
+node_name_to_binary() ->
+    re:replace(atom_to_list(node()),"@","",[{return, binary}]).
 
 -ifdef(TEST).
 auth_test() ->
