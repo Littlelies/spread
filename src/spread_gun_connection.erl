@@ -35,7 +35,7 @@
 -type state() :: #state{}.
 
 start_link(Target) ->
-    gen_server:start(?MODULE, [Target], []).
+    gen_server:start_link(?MODULE, [Target], []).
 
 init([Target]) ->
     self() ! {init, Target},
