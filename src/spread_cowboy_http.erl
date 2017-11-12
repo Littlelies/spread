@@ -45,9 +45,9 @@ maybe_process(Req, State, <<"OPTIONS">>, _, _) ->
         <<"access-control-allow-headers">> => <<"authorization">>,
         <<"access-control-allow-method">> => <<"POST">>
     } , <<>>, Req), State};
-maybe_process(Req, _, _, _, _) ->
+maybe_process(Req, State, _, _, _) ->
     %% Method not allowed.
-    cowboy_req:reply(405, Req).
+    {ok, cowboy_req:reply(405, #{}, <<"Method not allowed.">>, Req), State}.
 
 
 %% Processing GET requests.
