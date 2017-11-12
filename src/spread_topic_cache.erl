@@ -182,9 +182,9 @@ maybe_add_local(FilePath) ->
 maybe_move_file_and_its_data(File) ->
     case re:split(File, ?TEMP_EXTENSION, [{return, list}]) of
         [_] ->    
-            file:rename(File, re:replace(File, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
+            move(File, re:replace(File, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
             DataFile = re:replace(File, ?EVENT_SUB_PATH, ?DATA_SUB_PATH, [{return, list}]),
-            file:rename(DataFile, re:replace(DataFile, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
+            move(DataFile, re:replace(DataFile, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
             {moved, File};
         _ ->
             lager:info("tmp event, do not move it"),
@@ -195,3 +195,19 @@ put_file_in_dict(L) ->
     EventFileName = data_to_event(L),
     put({temp_open, EventFileName}, EventFileName),
     EventFileName.
+
+move(From, To) ->
+    ShallDelete = case get(shall_delete) of
+        undefined ->
+            Val = application:get_env(spread, shall_delete, false),
+            put(shall_delete, Val),
+            Val;
+        Val ->
+            Val
+    end,
+    case ShallDelete of
+        true ->
+            file:delete(From);
+        false ->
+            file:rename(From, To)
+    end.
