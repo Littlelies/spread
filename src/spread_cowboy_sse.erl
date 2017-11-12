@@ -19,6 +19,17 @@
 %%====================================================================
 
 init(Req, _State) ->
+    case spread_cowboy:get_auth(Req) of
+        error ->
+            {ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot SSE.">>, Req), _State};
+        {error, Reason} ->
+            lager:error("Error auth ~p", [Reason]),
+            {ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot SSE.">>, Req), _State};
+        From ->
+            process_init(Req)
+    end.
+
+process_init(Req) ->
     Path = cowboy_req:path_info(Req),
 
     Timestamp = case cowboy_req:header(<<"last-event-id">>, Req) of
