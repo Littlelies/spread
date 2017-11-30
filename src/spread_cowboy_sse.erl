@@ -25,7 +25,7 @@ init(Req, _State) ->
         {error, Reason} ->
             lager:error("Error auth ~p", [Reason]),
             {ok, cowboy_req:reply(401, #{}, <<"Unauthenticated requests cannot SSE.">>, Req), _State};
-        From ->
+        _From ->
             process_init(Req)
     end.
 

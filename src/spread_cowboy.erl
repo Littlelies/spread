@@ -40,7 +40,7 @@ get_auth(Req) ->
             spread_jwt_auth:auth(Authorization);
         _ ->
             QsVals = cowboy_req:parse_qs(Req),
-            case lists:keyfind(<<"authorization">>, 1, QsVals) of
+            case proplists:get_value(<<"authorization">>, QsVals) of
                 <<"Bearer ", Authorization/binary>> ->
                     spread_jwt_auth:auth(Authorization);
                 _Any ->
