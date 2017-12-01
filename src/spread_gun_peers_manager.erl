@@ -37,8 +37,7 @@ start_link() ->
 
 init([]) ->
     PermanentTargets = spread:subscribe_locally([?PEERS_ROOT_PATH], self()),
-    [self() ! {add_peer, Target, spread_data:to_binary(spread_event:data(Event)), self())}
-        || {[?PEERS_ROOT_PATH, Target], _, Event} <- PermanentTargets],
+    [self() ! {add_peer, Target, spread_data:to_binary(spread_event:data(Event)), self())} || {[?PEERS_ROOT_PATH, Target], _, Event} <- PermanentTargets],
     {ok, #state{}}.
 
 handle_call(_Request, _From, State) ->
