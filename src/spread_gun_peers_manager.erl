@@ -37,7 +37,7 @@ start_link() ->
 
 init([]) ->
     PermanentTargets = spread:subscribe_locally([?PEERS_ROOT_PATH], self()),
-    [self() ! {add_peer, Target, spread_data:to_binary(spread_event:data(Event)), self())} || {[?PEERS_ROOT_PATH, Target], _, Event} <- PermanentTargets],
+    [self() ! {add_peer, Target, spread_data:to_binary(spread_event:data(Event), self())} || {[?PEERS_ROOT_PATH, Target], _, Event} <- PermanentTargets],
     {ok, #state{}}.
 
 handle_call(_Request, _From, State) ->
@@ -51,7 +51,7 @@ handle_info({add_peer, Peer, Auth}, State) ->
     add_connection_on_sup(binary_to_atom(Peer, utf8), Auth),
     {noreply, State};
 handle_info({update, [?PEERS_ROOT_PATH, Peer], _Timestamp, Event}, State) ->
-    Auth = spread_data:to_binary(spread_event:data(Event)), self()),
+    Auth = spread_data:to_binary(spread_event:data(Event), self()),
     add_connection_on_sup(binary_to_atom(Peer, utf8), Auth),
     {noreply, State};
 handle_info(_Info, State) ->
