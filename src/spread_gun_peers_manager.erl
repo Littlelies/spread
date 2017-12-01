@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([
-    add_connection/1,
+    add_connection/2,
     get_connections_pids/0
 ]).
 
@@ -21,8 +21,8 @@
 
 -define(PEERS_ROOT_PATH, <<"local">>, <<"peers">>).
 
-add_connection(Target) ->
-    spread:post([?PEERS_ROOT_PATH, atom_to_binary(Target, utf8)], <<"pending">>).
+add_connection(Target, Auth) ->
+    spread:post([?PEERS_ROOT_PATH, atom_to_binary(Target, utf8)], Auth).
 
 get_connections_pids() ->
     lager:info("get connection pids ~p", [self()]),
@@ -37,7 +37,8 @@ start_link() ->
 
 init([]) ->
     PermanentTargets = spread:subscribe_locally([?PEERS_ROOT_PATH], self()),
-    [self() ! {add_peer, Target} || {[?PEERS_ROOT_PATH, Target], _, _} <- PermanentTargets],
+    [self() ! {add_peer, Target, spread_data:to_binary(spread_event:data(Event)), self())}
+        || {[?PEERS_ROOT_PATH, Target], _, Event} <- PermanentTargets],
     {ok, #state{}}.
 
 handle_call(_Request, _From, State) ->
@@ -47,11 +48,12 @@ handle_cast(_Msg, State) ->
     lager:info("Unknown cast ~p", [_Msg]),
     {noreply, State}.
 
-handle_info({add_peer, Peer}, State) ->
-    add_connection_on_sup(binary_to_atom(Peer, utf8)),
+handle_info({add_peer, Peer, Auth}, State) ->
+    add_connection_on_sup(binary_to_atom(Peer, utf8), Auth),
     {noreply, State};
-handle_info({update, [?PEERS_ROOT_PATH, Peer], _Timestamp, _Event}, State) ->
-    add_connection_on_sup(binary_to_atom(Peer, utf8)),
+handle_info({update, [?PEERS_ROOT_PATH, Peer], _Timestamp, Event}, State) ->
+    Auth = spread_data:to_binary(spread_event:data(Event)), self()),
+    add_connection_on_sup(binary_to_atom(Peer, utf8), Auth),
     {noreply, State};
 handle_info(_Info, State) ->
     lager:info("[spread_gun_peers_manager] Unknown info ~p", [_Info]),
@@ -67,8 +69,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal functions
 %%====================================================================
 
-add_connection_on_sup(Target) ->
-    Child = {Target, {spread_gun_connection, start_link, [Target]}, permanent, 5000, worker, [spread_gun_connection]},
+add_connection_on_sup(Target, Auth) ->
+    Child = {Target, {spread_gun_connection, start_link, [Target, Auth]}, permanent, 5000, worker, [spread_gun_connection]},
     lager:info("Starting child ~p ~p", [Target, self()]),
     case supervisor:start_child(spread_gun, Child) of
         {ok, ChildPid} ->

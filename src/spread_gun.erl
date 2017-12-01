@@ -5,7 +5,7 @@
 %% API
 -export([start_link/0
         ]).
--export([add_connection/1
+-export([add_connection/2
 %    , send_to/2
 ]).
 
@@ -26,39 +26,14 @@
 start_link() ->
     supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
--spec add_connection(atom()) -> {new | existing, spread_event:event(), [any()], spread_event:event() | error} | {error, any()}.
-add_connection(Target) ->
-    spread_gun_peers_manager:add_connection(Target).
+-spec add_connection(atom(), binary()) -> {new | existing, spread_event:event(), [any()], spread_event:event() | error} | {error, any()}.
+add_connection(Target, Auth) ->
+    spread_gun_peers_manager:add_connection(Target, Auth).
 
 -spec subscribe(spread_sub:sub()) -> ok.
 subscribe(Sub) ->
     %% Send subscribe to all children now, and to any new connection
     spread_gun_subscription_manager:add_subscription(Sub).
-
-% send_to(Target, Event) ->
-%     Children = supervisor:which_children(?MODULE),
-%     Out = case lists:keyfind(Target, 1, Children) of
-%         false ->
-%             lager:error("Attempt to find missing child ~p", [Target]),
-%             case add_connection(Target) of
-%                 error ->
-%                     error;
-%                 ChildPid ->
-%                     gen_server:call(ChildPid, {send, Event, self()})
-%             end;
-%         {_Id, restarting, _Type, _Modules} ->
-%             lager:error("Attempt to send to a restarting child ~p", [Target]),
-%             error;
-%         {_Id, ChildPid, _Type, _Modules} ->
-%             gen_server:call(ChildPid, {send, Event, self()})
-%     end,
-%     case Out of
-%         ok ->
-%             Target;
-%         _ ->
-%             lager:error("Error sending to ~p: ~p", [Target, Out]),
-%             error
-%     end.
 
 %% ===================================================================
 %% Supervisor callbacks

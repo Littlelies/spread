@@ -13,7 +13,7 @@
 -export([maybe_post/2, post/2]).
 -export([subscribe/2]).
 -export([subscribe_locally/2]).
--export([ensure_remote/1]).
+-export([ensure_remote/1, ensure_remote/2]).
 
 -ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
@@ -64,7 +64,11 @@ maybe_post(Path, Payload) ->
 
 -spec ensure_remote(atom()) -> {existing | new, spread_event:event(), [any()], spread_event:event() | error} | {error, any()}.
 ensure_remote(NodeName) ->
-    spread_gun:add_connection(NodeName).
+    ensure_remote(NodeName, <<"Bearer Anonymous">>).
+
+-spec ensure_remote(atom(), binary()) -> {existing | new, spread_event:event(), [any()], spread_event:event() | error} | {error, any()}.
+ensure_remote(NodeName, Auth) ->
+    spread_gun:add_connection(NodeName, Auth).
 
 -spec subscribe_locally(spread_topic:topic_name(), pid()) -> [{spread_topic:topic_name(), integer(), spread_event:event()}].
 subscribe_locally(Path, Pid) ->

@@ -2,7 +2,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/1]).
+-export([start_link/2]).
 
 %% @todo: manage timeouts for each stream!
 
@@ -16,6 +16,7 @@
 
 -record(state, {
     target,
+    auth,
     connpid,
     streams = [],
     state = init,
@@ -34,12 +35,12 @@
 }).
 -type state() :: #state{}.
 
-start_link(Target) ->
-    gen_server:start_link(?MODULE, [Target], []).
+start_link(Target, Auth) ->
+    gen_server:start_link(?MODULE, [Target, Auth], []).
 
-init([Target]) ->
-    self() ! {init, Target},
-    {ok, #state{target = Target}}.
+init([Target, Auth]) ->
+    self() ! {init, Target, Auth},
+    {ok, #state{target = Target, auth = Auth}}.
 
 handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
@@ -52,13 +53,13 @@ handle_cast({load_binary_event, Event}, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({init, Target}, State) ->
+handle_info({init, Target, Auth}, State) ->
     {Host, Port} = get_host_and_port(Target),
     case gun:open(Host, Port, #{protocols => [http2]}) of
         {ok, ConnPid} ->
             _MRef = monitor(process, ConnPid),
             Subs = spread_gun_subscription_manager:get_subs(),
-            {noreply, State#state{connpid = ConnPid, subs = Subs, state = down}};
+            {noreply, State#state{connpid = ConnPid, auth = Auth, subs = Subs, state = down}};
         {error, Reason} ->
             lager:error("FAILED TO CONNECT TO ~p, RETRYING", [Reason]),
             timer:send_after(2000, {init, Target}),
@@ -134,7 +135,8 @@ add_subscriptions([Sub | Subs], State) ->
     Stream = gun:get(State#state.connpid,
         SubPath,
         [
-            {<<"last-event-id">>, integer_to_list(spread_sub:timestamp(Sub))}
+            {<<"last-event-id">>, integer_to_list(spread_sub:timestamp(Sub))},
+            {<<"authorization">>, State#state.auth}
         ]),
     add_subscriptions(Subs, add_subs_stream(Stream, Sub, State)).
 
