@@ -51,8 +51,9 @@ process_init(Req) ->
         <<"cache-control">> => <<"no-cache">>,
         <<"x-accel-buffering">> => <<"no">>
     }, Req),
-    
-    [self ! {update, PathAsList, Iteration, Event} || {PathAsList, Iteration, Event} <- FirstSet],    
+
+    Self = self(),
+    [Self ! {update, PathAsList, Iteration, Event} || {PathAsList, Iteration, Event} <- FirstSet],    
     
     {cowboy_loop, Req1, #state{ttl = erlang:system_time(second) + ?TIMEOUT}, hibernate}.
 
