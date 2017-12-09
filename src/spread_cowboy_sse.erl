@@ -52,7 +52,7 @@ process_init(Req) ->
         <<"x-accel-buffering">> => <<"no">>
     }, Req),
     
-    cowboy_req:stream_body(spread_autotree:format_updates(FirstSet), nofin, Req1),
+    [self ! {update, PathAsList, Iteration, Event} || {PathAsList, Iteration, Event} <- FirstSet],    
     
     {cowboy_loop, Req1, #state{ttl = erlang:system_time(second) + ?TIMEOUT}, hibernate}.
 
