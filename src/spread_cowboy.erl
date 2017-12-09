@@ -44,7 +44,7 @@ get_auth(Req) ->
                 <<"Bearer ", Authorization/binary>> ->
                     spread_jwt_auth:auth(Authorization);
                 _Any ->
-                    lager:info("Unsecure connection, should be refusing it ~p", [_Any]),
+                    lager:debug("Unsecure connection, should be refusing it ~p", [_Any]),
                     error
             end
     end.

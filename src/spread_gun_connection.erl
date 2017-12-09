@@ -66,34 +66,34 @@ handle_info({init, Target, Auth}, State) ->
             {noreply, State}
     end;
 handle_info({gun_up, _ConnPid, HTTPVersion}, State) ->
-    lager:info("[~p] Connection is up using ~p", [State#state.target, HTTPVersion]),
+    lager:debug("[~p] Connection is up using ~p", [State#state.target, HTTPVersion]),
     %% Re open all streams
     NewState = add_subscriptions(State#state.subs, State),
     {noreply, NewState#state{state = up}};
 handle_info({gun_down, _ConnPid, _Protocol, _Reason, _Processed, _NotProcessed}, State) ->
-    lager:info("[~p] Connection is down", [State#state.target]),
+    lager:debug("[~p] Connection is down", [State#state.target]),
     {noreply, State#state{state = down}};
 handle_info({gun_response, _ConnPid, StreamRef, fin, _Status, Headers}, State) ->
-    lager:info("[~p] No data for ~p, headers are ~p", [State#state.target, StreamRef, Headers]),
+    lager:debug("[~p] No data for ~p, headers are ~p", [State#state.target, StreamRef, Headers]),
     {_, NewState} = remove_stream(StreamRef, State),
     {noreply, NewState};
 handle_info({gun_response, _ConnPid, StreamRef, nofin, _Status, Headers}, State) ->
-    lager:info("[~p] Got headers for ~p: ~p", [State#state.target, StreamRef, Headers]),
+    lager:debug("[~p] Got headers for ~p: ~p", [State#state.target, StreamRef, Headers]),
     %NewState = manage_data(Headers, StreamRef, false, State),    
     {noreply, State};
 handle_info({gun_data, _ConnPid, StreamRef, nofin, Data}, State) ->
-    lager:info("[~p] Got partial data for ~p: ~p", [State#state.target, StreamRef, Data]),
+    lager:debug("[~p] Got partial data for ~p: ~p", [State#state.target, StreamRef, Data]),
     NewState = manage_data(Data, StreamRef, false, State),
     {noreply, NewState};
 handle_info({gun_data, _ConnPid, StreamRef, fin, Data}, State) ->
-    lager:info("[~p] Got final data for ~p: ~p", [State#state.target, StreamRef, Data]),
+    lager:debug("[~p] Got final data for ~p: ~p", [State#state.target, StreamRef, Data]),
     NewState1 = manage_data(Data, StreamRef, true, State),
     {OldSub, NewState2} = remove_stream(StreamRef, NewState1),
     NewState = case OldSub of
         not_a_sub_stream ->
             NewState2;
         _ ->
-            lager:info("Reconnect sub ~p", [OldSub]),
+            lager:debug("Reconnect sub ~p", [OldSub]),
             add_subscriptions([OldSub], NewState2)
     end,
     {noreply, NewState};
@@ -108,10 +108,10 @@ handle_info({gun_error, _MRef, StreamRef, Any}, State) ->
     % {badstate,"The stream has already been closed."}, {badstate,"The stream cannot be found."}
     %% @todo: remove the stream
     %% @todo stop our subscription to spread_data:to_binary
-    lager:info("Stream ~p says: ~p", [StreamRef, Any]),
+    lager:debug("Stream ~p says: ~p", [StreamRef, Any]),
     {noreply, State};
 handle_info(_Info, State) ->
-    lager:info("[spread_gun_connection] Unknown info ~p", [_Info]),
+    lager:debug("[spread_gun_connection] Unknown info ~p", [_Info]),
     {noreply, State}.
 
 terminate(_Reason, State) when State#state.state =/= init ->
@@ -128,10 +128,10 @@ code_change(_OldVsn, State, _Extra) ->
 add_subscriptions([], State) ->
     State;
 add_subscriptions([Sub | Subs], State) ->
-    lager:info("Adding subscription ~p to ~p", [Sub, State]),
+    lager:debug("Adding subscription ~p to ~p", [Sub, State]),
     % @todo: what happens when we do that and connection is down???
     SubPath = <<"/sse/", (spread_topic:name_as_binary(spread_sub:path(Sub)))/binary>>,
-    lager:info("Path is ~p", [SubPath]),
+    lager:debug("Path is ~p", [SubPath]),
     Stream = gun:get(State#state.connpid,
         SubPath,
         [
@@ -168,7 +168,7 @@ remove_stream(StreamRef, State) ->
 
 -spec manage_data(binary(), any(), boolean(), state()) -> state().
 manage_data(Data, StreamRef, IsFin, State) ->
-    lager:info("Manage ~p in ~p", [StreamRef, State#state.streams]),
+    lager:debug("Manage ~p in ~p", [StreamRef, State#state.streams]),
     case lists:keyfind(StreamRef, 2, State#state.streams) of
         false ->
             Self = self(),

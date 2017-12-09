@@ -53,7 +53,7 @@ maybe_process(Req, State, _, _, _) ->
 %% Processing GET requests.
 %% We send the body by chunks as they arrive
 process_get(Req, State, Path) ->
-    lager:info("~p GET ~p", [self(), Path]),
+    lager:debug("~p GET ~p", [self(), Path]),
 
     %% @todo: check ETag in order to send 304
     case spread:get(Path, self()) of
@@ -89,14 +89,14 @@ send_next_chunks(Req, State) ->
 %% We upload the body by chunks, updating all subscribers at the same time
 process_post(Req0, State, Path, From) ->
     Date = get_date(Req0),
-    lager:info("~p POST From ~p, Date ~p: ~p", [self(), From, Date, Path]),
+    lager:debug("~p POST From ~p, Date ~p: ~p", [self(), From, Date, Path]),
     Answer = case cowboy_req:read_body(Req0, #{length => 64}) of
         {ok, Data, Req} ->
-            lager:info("Got unique chunk, creating event"),
+            lager:debug("Got unique chunk, creating event"),
             {_IsNew, Event, Out, _PreviousOrError} = spread_core:set_event(Path, From, Date, Data, true, false),
             true;
         {more, Data, Req} ->
-            lager:info("Got first chunk, creating event ~p", [size(Data)]),
+            lager:debug("Got first chunk, creating event ~p", [size(Data)]),
             {IsNew, Event, Out, _PreviousOrError} = spread_core:set_event(Path, From, Date, Data, false, false),
             case IsNew of
                 new ->
@@ -106,7 +106,7 @@ process_post(Req0, State, Path, From) ->
                     false
             end
     end,
-    lager:info("Upload done"),
+    lager:debug("Upload done"),
     case Answer of
         true ->
             {ok, cowboy_req:reply(200, #{
@@ -120,10 +120,10 @@ process_post(Req0, State, Path, From) ->
 read_body(Req0, Event) ->
     case cowboy_req:read_body(Req0, #{length => 256000}) of
         {ok, Data, _Req} ->
-            lager:info("Last Chunk ~p", [size(Data)]),
+            lager:debug("Last Chunk ~p", [size(Data)]),
             spread_core:add_data_to_event(Event, Data, true);
         {more, Data, Req} ->
-            lager:info("Chunk ~p", [size(Data)]),
+            lager:debug("Chunk ~p", [size(Data)]),
             spread_core:add_data_to_event(Event, Data, false),
             read_body(Req, Event)
     end.

@@ -137,10 +137,10 @@ start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
 
 init([]) ->
-    lager:info("[spread_data] Init started"),
+    lager:debug("Init started"),
     filelib:ensure_dir(?ROOT_STORAGE_DATA_DIR ++ "1"),
     State = #state{},
-    lager:info("[spread_data] Init done"),
+    lager:debug("Init done"),
     erlang:send_after(60 * 1000, self(), {gc}),
     {ok, State}.
 

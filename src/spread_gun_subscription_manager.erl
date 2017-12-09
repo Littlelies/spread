@@ -43,7 +43,7 @@ handle_call({add_subscription, Sub}, _From, State) ->
 handle_call({get_subs}, _From, State) ->
     {reply, State#state.subs, State};
 handle_call(_Request, _From, State) ->
-    lager:info("Unknown call ~p", [_Request]),
+    lager:debug("Unknown call ~p", [_Request]),
     {reply, ignored, State}.
 
 handle_cast(_Msg, State) ->

@@ -111,29 +111,29 @@ spread_test() ->
     application:start(spread),
     spread:ensure_remote('localhost:8080'),
 
-    lager:info("TEST: We can subscribe to a path where there is nothing yet"),
+    lager:debug("TEST: We can subscribe to a path where there is nothing yet"),
     spread:subscribe([<<"test">>], self()),
 
-    lager:info("TEST: We can post new data and get the amount of warned subscribers for each sub path"),
+    lager:debug("TEST: We can post new data and get the amount of warned subscribers for each sub path"),
     SmallPayload =  <<"test small payload but so small just to make sure we create a new file for that small payload no?">>,
     SmallTopic = [<<"test">>, <<"test1">>],
     {new, Event, {It, List, _}, _} = spread:post(SmallTopic, SmallPayload),
-    lager:info("List ~p, Iteration ~p", [List, It]),
+    lager:debug("List ~p, Iteration ~p", [List, It]),
     ?assertEqual([{[],0}, {[<<"test">>], 1}, {[<<"test">>, <<"test1">>], 0}], List),
     assert_update_received(SmallTopic),
 
-    lager:info("TEST: We can fail to update if data is already here"),
+    lager:debug("TEST: We can fail to update if data is already here"),
     It2 = It + 1,
     {new, _Event2, {It2, [], Event}, Event} = spread:maybe_post(SmallTopic, <<"whatever, won't be taken into account">>),
 
-    lager:info("TEST: We get error if nothing was here before"),
+    lager:debug("TEST: We get error if nothing was here before"),
     It3 = It + 2,
     {new, _Event3, {It3, List2, error}, error} = spread:post([<<"test">>, <<"test_bogus">>], <<"something">>),
-    lager:info("LIST2 ~p", [List2]),
+    lager:debug("LIST2 ~p", [List2]),
     ?assertEqual([{[],0}, {[<<"test">>], 1}, {[<<"test">>, <<"test_bogus">>], 0}], List2),
     assert_update_received([<<"test">>, <<"test_bogus">>]),
 
-    lager:info("TEST: We can get stored data with info"),
+    lager:debug("TEST: We can get stored data with info"),
     {_Time, From, Pay} = spread:get(SmallTopic),
     ?assertEqual(
         From,
@@ -145,26 +145,26 @@ spread_test() ->
     ),
     ?assertEqual(os:cmd("cd apps/spread/tests && ./get.sh"), binary_to_list(SmallPayload)),
 
-    lager:info("TEST: We can post new small data via HTTP"),
-    lager:info("Command: ~p", [os:cmd("cd apps/spread/tests && ./post_small_http.sh")]),
+    lager:debug("TEST: We can post new small data via HTTP"),
+    lager:debug("Command: ~p", [os:cmd("cd apps/spread/tests && ./post_small_http.sh")]),
     assert_update_received([<<"test">>]),
 
-    lager:info("TEST: We can post new big data via HTTP"),
+    lager:debug("TEST: We can post new big data via HTTP"),
     os:cmd("cd apps/spread/tests && ./post_big_http.sh &"),
     os:cmd("cd apps/spread/tests && ./post_big_http.sh"),
     assert_update_received([<<"test">>, <<"image">>]),
     assert_update_received([<<"test">>, <<"image">>]),
 
-    lager:info("TEST: Not authenticated requests are rejected"),
+    lager:debug("TEST: Not authenticated requests are rejected"),
     ?assertEqual(os:cmd("cd apps/spread/tests && ./post_no_auth.sh"), "401"),
 
-    lager:info("TEST: POST without body are rejected"),
+    lager:debug("TEST: POST without body are rejected"),
     ?assertEqual(os:cmd("cd apps/spread/tests && ./post_no_body.sh"), "400"),
 
-    lager:info("TEST: GET of unknown resources end up in 404"),
+    lager:debug("TEST: GET of unknown resources end up in 404"),
     ?assertEqual(os:cmd("cd apps/spread/tests && ./get_404.sh"), "404"),
 
-    lager:info("TEST: Backup data"),
+    lager:debug("TEST: Backup data"),
     spread_topic_cache ! {gc},
     timer:sleep(200),
     ok

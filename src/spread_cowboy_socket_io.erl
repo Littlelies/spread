@@ -51,25 +51,25 @@ init(Req, _State) ->
 websocket_init(State) ->
     Timestamp = State#state.timestamp,
     Path = State#state.path,
-    lager:info("~p WS ~p with timestamp ~p", [self(), Path, Timestamp]),
+    lager:debug("~p WS ~p with timestamp ~p", [self(), Path, Timestamp]),
     FirstSet = spread_autotree:subscribe(Path, Timestamp, self()),    
     {reply, {text, spread_autotree:format_updates(FirstSet)}, State}.
 
 websocket_handle(InFrame, State) ->
-    lager:info("Received frame ~p", [InFrame]),
+    lager:debug("Received frame ~p", [InFrame]),
     {reply, pong, State}.
 
 websocket_info({update, PathAsList, Timestamp, Opaque} = Message, State) ->
-    lager:info("~p Received a message ~p", [self(), Message]),
+    lager:debug("~p Received a message ~p", [self(), Message]),
     {reply, {text, spread_autotree:format_updates([{PathAsList, Timestamp, Opaque}])}, State}.
 
 
 info({update, PathAsList, Iteration, Event} = Message, Req, #state{ttl = TTL} = State) ->
-    lager:info("~p Received a message ~p", [self(), Message]),
+    lager:debug("~p Received a message ~p", [self(), Message]),
     Now = erlang:system_time(second),
     if
         TTL < Now ->
-            lager:info("Dropping connection"),
+            lager:debug("Dropping connection"),
             {stop, Req, State};
         true ->
             cowboy_req:stream_body(spread_autotree:format_updates([{PathAsList, Iteration, Event}]), nofin, Req),
@@ -77,7 +77,7 @@ info({update, PathAsList, Iteration, Event} = Message, Req, #state{ttl = TTL} = 
     end.
 
 terminate(_Reason, _Req, _State) ->
-    lager:info("Remote closed WS ~p", [_Reason]),
+    lager:debug("Remote closed WS ~p", [_Reason]),
     ok.
 
 %%====================================================================

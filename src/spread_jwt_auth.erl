@@ -16,7 +16,7 @@ auth(Authorization) ->
         {{ok, Key}, {ok, Iss}} ->
             case jwt:decode(Authorization, Key) of
                 {ok, Claims} ->
-                    lager:info("Claims are ~p", [Claims]),
+                    lager:debug("Claims are ~p", [Claims]),
                     case catch maps:get(<<"iss">>, Claims) of
                         Iss ->
                             try maps:get(<<"uid">>, Claims) of

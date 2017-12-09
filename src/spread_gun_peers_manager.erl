@@ -25,14 +25,14 @@ add_connection(Target, Auth) ->
     spread:post([?PEERS_ROOT_PATH, atom_to_binary(Target, utf8)], Auth).
 
 get_connections_pids() ->
-    lager:info("get connection pids ~p", [self()]),
+    lager:debug("get connection pids ~p", [self()]),
     Out = [Pid || {_Id, Pid, _Type, [spread_gun_connection]} <- supervisor:which_children(spread_gun)],
-    lager:info("out is ~p", [Out]),
+    lager:debug("out is ~p", [Out]),
     Out.
 
 start_link() ->
     Out = gen_server:start_link({local, ?MODULE}, ?MODULE, [], []),
-    lager:info("[spread_gun_peers_manager] started"),
+    lager:debug("started"),
     Out.
 
 init([]) ->
@@ -44,7 +44,7 @@ handle_call(_Request, _From, State) ->
     {reply, ignored, State}.
 
 handle_cast(_Msg, State) ->
-    lager:info("Unknown cast ~p", [_Msg]),
+    lager:debug("Unknown cast ~p", [_Msg]),
     {noreply, State}.
 
 handle_info({add_peer, Peer, Auth}, State) ->
@@ -55,7 +55,7 @@ handle_info({update, [?PEERS_ROOT_PATH, Peer], _Timestamp, Event}, State) ->
     add_connection_on_sup(binary_to_atom(Peer, utf8), Auth),
     {noreply, State};
 handle_info(_Info, State) ->
-    lager:info("[spread_gun_peers_manager] Unknown info ~p", [_Info]),
+    lager:debug("Unknown info ~p", [_Info]),
     {noreply, State}.
 
 terminate(_Reason, _State) ->
@@ -70,7 +70,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 add_connection_on_sup(Target, Auth) ->
     Child = {Target, {spread_gun_connection, start_link, [Target, Auth]}, permanent, 5000, worker, [spread_gun_connection]},
-    lager:info("Starting child ~p ~p", [Target, self()]),
+    lager:debug("Starting child ~p ~p", [Target, self()]),
     case supervisor:start_child(spread_gun, Child) of
         {ok, ChildPid} ->
             lager:info("Started gun connection to ~p at ~p", [Target, ChildPid]),

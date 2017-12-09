@@ -15,7 +15,7 @@ subscribe(Path, Timestamp, Pid) ->
 -spec update(spread_event:event(), boolean()) -> {too_late, spread_event:event()} | {autotree_app:iteration(), [{[any()], integer()}], spread_event:event() | error}.
 update(Event, FailIfExists) ->
     PathAsList = spread_topic:name(spread_event:topic(Event)),
-    lager:info("Update ~p", [PathAsList]),
+    lager:debug("Update ~p", [PathAsList]),
     autotree_app:update(PathAsList, Event, FailIfExists).
 
 -spec get_iteration_and_opaque([binary()]) -> {autotree_app:iteration(), any()} | error.
@@ -67,7 +67,7 @@ parse_updates_and_broadcast([Update | Updates], Callback, Acc, _) ->
     Date = binary_to_integer(TimestampB),
     IsFile = case Data of
         <<>> ->
-            lager:info("this is a file"),
+            lager:debug("this is a file"),
             true;
         _ ->
             false
@@ -77,7 +77,7 @@ parse_updates_and_broadcast([Update | Updates], Callback, Acc, _) ->
         {new, true} ->
             Callback(Event);
         _ ->
-            lager:info("No new file, no need to download ~p", [{IsNew, IsFile}]),
+            lager:debug("No new file, no need to download ~p", [{IsNew, IsFile}]),
             ok
     end,
     parse_updates_and_broadcast(Updates, Callback, [Event | Acc], Iteration).

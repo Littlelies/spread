@@ -39,7 +39,7 @@ process_init(Req) ->
             binary_to_integer(LastEventId)
     end,
 
-    lager:info("~p SSE ~p with timestamp ~p", [self(), Path, Timestamp]),
+    lager:debug("~p SSE ~p with timestamp ~p", [self(), Path, Timestamp]),
 
     FirstSet = spread_autotree:subscribe(Path, Timestamp, self()),
     
@@ -57,11 +57,11 @@ process_init(Req) ->
     {cowboy_loop, Req1, #state{ttl = erlang:system_time(second) + ?TIMEOUT}, hibernate}.
 
 info({update, PathAsList, Iteration, Event} = Message, Req, #state{ttl = TTL} = State) ->
-    lager:info("~p Received a message ~p", [self(), Message]),
+    lager:debug("~p Received a message ~p", [self(), Message]),
     Now = erlang:system_time(second),
     if
         TTL < Now ->
-            lager:info("Dropping connection"),
+            lager:debug("Dropping connection"),
             {stop, Req, State};
         true ->
             cowboy_req:stream_body(spread_autotree:format_updates([{PathAsList, Iteration, Event}]), nofin, Req),

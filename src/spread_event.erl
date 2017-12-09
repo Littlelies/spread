@@ -55,7 +55,7 @@ get_all_event_filenames() ->
 -spec get_event_from_filename(list()) -> event() | {error, any()}.
 get_event_from_filename(FileName) ->
     FilePath = event_file_path(FileName),
-    lager:info("reading ~p", [FilePath]),
+    lager:debug("reading ~p", [FilePath]),
     case file:consult(FilePath) of
         {ok, [Event]} when is_record(Event, event) ->
             Event;

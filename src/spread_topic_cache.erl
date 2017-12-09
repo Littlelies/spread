@@ -144,12 +144,12 @@ move_history() ->
     do_move_history(FreeFiles).
 
 do_move_history(FreeFiles) ->
-    lager:info("MOVING ~p", [FreeFiles]),
+    lager:debug("MOVING ~p", [FreeFiles]),
     [maybe_move_file_and_its_data(maybe_add_local(File)) || File <- FreeFiles].
 
 filter_out_open_data(OldFiles) ->
     Open = insert_all_open_files(),
-    lager:info("OPEN ~p", [Open]),
+    lager:debug("OPEN ~p", [Open]),
     Out = do_filter_out_open_data(OldFiles, []),
     flush_all_open_files(),
     Out.
@@ -187,7 +187,7 @@ maybe_move_file_and_its_data(File) ->
             move(DataFile, re:replace(DataFile, ?STORAGE_PATH, ?HISTORY_PATH, [{return, list}])),
             {moved, File};
         _ ->
-            lager:info("tmp event, do not move it"),
+            lager:debug("tmp event, do not move it"),
             {skipped, File}
     end.
 
