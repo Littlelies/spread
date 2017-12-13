@@ -65,7 +65,7 @@ process_get(Req, State, Path) ->
                 <<"content-type">> => <<"application/octet-stream">>,
                 <<"access-control-allow-origin">> => <<"*">>,
                 <<"from">> => From,
-                <<"etag">> => <<"\"", (integer_to_binary(Date))/binary, "\"">>
+                <<"x-spread-etag">> => <<"\"", (integer_to_binary(Date))/binary, "\"">>
             }, Req),
             cowboy_req:stream_body(FirstChunk, nofin, Req1),
             %% @todo: respect API and send the loop right away
@@ -129,7 +129,7 @@ read_body(Req0, Event) ->
     end.
 
 get_date(Req) ->
-    case cowboy_req:header(<<"etag">>, Req) of
+    case cowboy_req:header(<<"x-spread-etag">>, Req) of
         undefined ->
             erlang:system_time(microsecond);
         RawEtag ->
